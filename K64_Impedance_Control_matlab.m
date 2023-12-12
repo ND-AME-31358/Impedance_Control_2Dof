@@ -1,4 +1,4 @@
-function output_data = K64_Current_Control_matlab()
+function output_data = K64_Impedance_Control_matlab()
     figure(1);  clf;       % Create an empty figure to update later
     subplot(411)
     h1 = plot([0],[0]);
@@ -51,14 +51,15 @@ function output_data = K64_Current_Control_matlab()
 %     input = [v1 v2];    % input sent to FRDM board
 %     output_size = 3;    % number of outputs expected
 
-    current_des = 1.0; 
-    R_motor = 3.8;
-    Kb = 0.8;
-    % P Controller
-    Kp = 3;
-    ExpTime = 3 ; % Expriement time
+
+    R_motor       = 3.8;    // Resistance of motor
+    Kb            = 0.8;    // Kb (Back EMF)
+    Kp            = 3;      // Kp
+    K             = 0.2;    // KP of impedance
+    D             = 0.01;   // KD of impedance
+    ExpTime       = 5;      // Expriement time in second
     
-    input = [current_des R_motor Kb Kp ExpTime];
+    input = [R_motor Kb Kp K D ExpTime];
     output_size = 5;
    
     output_data = RunExperiment(frdm_ip,frdm_port,input,output_size,params);

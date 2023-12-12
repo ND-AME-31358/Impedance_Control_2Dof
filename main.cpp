@@ -14,7 +14,7 @@ public:
 };
 
 // Define number of communication parameters with matlab
-#define NUM_INPUTS 5
+#define NUM_INPUTS 6
 #define NUM_OUTPUTS 5
 
 Serial pc(USBTX, USBRX,115200);     // USB Serial Terminal for debugging
@@ -52,7 +52,7 @@ float velocity = 0.0;
 float voltage = 0.0;
 float current = 0.0;
 
-float current_des   = 0.0f; // Desired current
+// float current_des   = 0.0f; // Desired current
 float Kp   = 0.0; // Kp
 float Rm   = 0.0; // Resistance
 float Kb   = 0.0; // Kb
@@ -71,11 +71,12 @@ int main (void) {
     while(1) {
         if (server.getParams(input_params,NUM_INPUTS)) {
             // Unpack parameters from MATLAB
-            current_des   = input_params[0]; // Desired current
-            Rm            = input_params[1]; // Resistance of motor
-            Kb            = input_params[2]; // Kb (Back EMF)
-            Kp            = input_params[3]; // Kp
-            float ExpTime = input_params[4]; // Expriement time in second
+            Rm            = input_params[0]; // Resistance of motor
+            Kb            = input_params[1]; // Kb (Back EMF)
+            Kp            = input_params[2]; // Kp
+            float K       = input_params[3]; // KP of impedance
+            float D       = input_params[4]; // KD of impedance
+            float ExpTime = input_params[5]; // Expriement time in second
 
             // Setup experiment
             t.reset();
@@ -87,6 +88,8 @@ int main (void) {
 
             // Run experiment
             while( t.read() < ExpTime ) { 
+
+                current_des = (-angle*K -velocity*D)/Kb;
 
                 // Form output to send to MATLAB    
                 float output_data[NUM_OUTPUTS];
