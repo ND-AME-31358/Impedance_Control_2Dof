@@ -54,7 +54,8 @@ function output_data = K64_Impedance_Control_matlab()
 
     R_motor       = 1.852;	% Resistance of motor
     Kb            = 0.005;	% Kb (Back EMF)
-    Kp            = 3;      % Kp
+    Kp            = 3;      % Kp proportional gain of current control
+    Kf            = 0.0;    % Kf friction coe
     K             = 0.01;	% KP of impedance
     D             = 0.001;	% KD of impedance
     ExpTime       = 3;      % Expriement time in second

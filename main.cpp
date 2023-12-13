@@ -14,13 +14,14 @@ public:
 };
 
 // Define number of communication parameters with matlab
-#define NUM_INPUTS 6
+#define NUM_INPUTS 7
 #define NUM_OUTPUTS 5
 
 Serial pc(USBTX, USBRX,115200);     // USB Serial Terminal for debugging
 ExperimentServer server;            // Object that lets us communicate with MATLAB
 Timer t;                            // Timer to measure elapsed time of experiment
 Ticker currentLoopTicker;           // Ticker to call high frequency current loop
+DigitalOut led_g(LED_GREEN,1);      // UDP server state indicator
 
 /************************Complete the code in this block**************************/
 // Assign digital/analog pins for control and sensing
@@ -53,14 +54,16 @@ float voltage = 0.0;
 float current = 0.0;
 
 float current_des   = 0.0f; // Desired current
-float Kp   = 0.0; // Kp
+float Kp   = 0.0; // Kp proportional gain of current control
 float Rm   = 0.0; // Resistance
-float Kb   = 0.0; // Kb
+float Kb   = 0.0; // Kb (Back EMF)
+float Kf   = 0.0; // Kf friction coe
 
 int main (void) {
     // Link the terminal with our server and start it up
     server.attachTerminal(pc);
     server.init();
+    led_g = 0;  // UDP server is ready, turn on green led
 
     // PWM period should nominally be a multiple of our control loop
     M1PWM.period_us(50);
@@ -73,10 +76,11 @@ int main (void) {
             // Unpack parameters from MATLAB
             Rm            = input_params[0]; // Resistance of motor
             Kb            = input_params[1]; // Kb (Back EMF)
-            Kp            = input_params[2]; // Kp
-            float K       = input_params[3]; // KP of impedance
-            float D       = input_params[4]; // KD of impedance
-            float ExpTime = input_params[5]; // Expriement time in second
+            Kp            = input_params[2]; // Kp proportional gain of current control
+            Kf            = input_params[3]; // Kf friction coe
+            float K       = input_params[4]; // KP of impedance
+            float D       = input_params[5]; // KD of impedance
+            float ExpTime = input_params[6]; // Expriement time in second
 
             // Setup experiment
             t.reset();
