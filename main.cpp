@@ -52,7 +52,7 @@ float velocity = 0.0;
 float voltage = 0.0;
 float current = 0.0;
 
-// float current_des   = 0.0f; // Desired current
+float current_des   = 0.0f; // Desired current
 float Kp   = 0.0; // Kp
 float Rm   = 0.0; // Resistance
 float Kb   = 0.0; // Kb

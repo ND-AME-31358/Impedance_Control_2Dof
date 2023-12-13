@@ -52,12 +52,12 @@ function output_data = K64_Impedance_Control_matlab()
 %     output_size = 3;    % number of outputs expected
 
 
-    R_motor       = 3.8;    // Resistance of motor
-    Kb            = 0.8;    // Kb (Back EMF)
-    Kp            = 3;      // Kp
-    K             = 0.2;    // KP of impedance
-    D             = 0.01;   // KD of impedance
-    ExpTime       = 5;      // Expriement time in second
+    R_motor       = 1.852;	% Resistance of motor
+    Kb            = 0.005;	% Kb (Back EMF)
+    Kp            = 3;      % Kp
+    K             = 0.01;	% KP of impedance
+    D             = 0.001;	% KD of impedance
+    ExpTime       = 3;      % Expriement time in second
     
     input = [R_motor Kb Kp K D ExpTime];
     output_size = 5;
