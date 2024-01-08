@@ -210,13 +210,15 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     
     xDesFoot                 = 0;     % Desired foot position x (m)
     yDesFoot                 = -0.15; % Desired foot position y (m)
+    A                        = 0.05;  % Magnitude of oscillation (m)
+    omega                    = 1;     % Angular velocity of oscillation (RPS, Revolutions Per Second)
 
     duty_max                 = 0.2;  % Maximum PWM duty (safety limit)
     
     %% Sepectify inputs
     input = [current_control_period_us impedance_control_period_us exp_period];
     input = [input Rm Kb Kv supply_voltage angle1_init angle2_init];
-    input = [input Kp Ki K_xx K_yy K_xy D_xx D_yy D_xy xDesFoot yDesFoot];
+    input = [input Kp Ki K_xx K_yy K_xy D_xx D_yy D_xy xDesFoot yDesFoot A omega];
     input = [input duty_max];
     params.timeout  = exp_period;  
     

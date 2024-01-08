@@ -17,7 +17,7 @@ public:
 };
 
 // Define number of communication parameters with matlab
-#define NUM_INPUTS 20
+#define NUM_INPUTS 22
 #define NUM_OUTPUTS 17
 
 Serial pc(USBTX, USBRX,115200);     // USB Serial Terminal for debugging
@@ -99,8 +99,11 @@ float D_xy;
 float D_yy;
 
 
-float xDesFoot;
-float yDesFoot;
+float xSetFoot;
+float ySetFoot;
+
+float A;
+float omega;
 
 
 // Model parameters
@@ -150,9 +153,12 @@ int main (void) {
             D_yy                        = input_params[15]; // Foot damping N/(m/s)
             D_xy                        = input_params[16]; // Foot damping N/(m/s)
                         
-            xDesFoot                    = input_params[17]; // Desired foot position x (m)
-            yDesFoot                    = input_params[18]; // Desired foot position y (m)
-            duty_max                    = input_params[19]; // Maximum duty of PWM
+            xSetFoot                    = input_params[17]; // Foot position set point x (m)
+            ySetFoot                    = input_params[18]; // Foot position set point y (m)
+            A                           = input_params[19]; // Magnitude of oscillation (m)
+            omega                       = input_params[20]; // Angular velocity of oscillation (RPS, Revolutions Per Second)
+
+            duty_max                    = input_params[21]; // Maximum duty of PWM
 
 
             // Setup experiment
@@ -189,14 +195,16 @@ int main (void) {
                 float Jx_th2 = l_AC*cos(th1 + th2);
                 float Jy_th1 = l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
                 float Jy_th2 = l_AC*sin(th1 + th2);
-                
+
                 // Foot tip velocity
                 float dxLeg = Jx_th1 * dth1 + Jx_th2 * dth2;
                 float dyLeg = Jy_th1 * dth1 + Jy_th2 * dth2;
 
-
-                float e_x = ( xLeg - xDesFoot);
-                float e_y = ( yLeg - yDesFoot);
+                // Desired foot position
+                float xd = xSetFoot;
+                float yd = ySetFoot;
+                float e_x = ( xLeg - xd);
+                float e_y = ( yLeg - yd);
                 
                 float de_x = ( dxLeg - 0.0);
                 float de_y = ( dyLeg - 0.0);
