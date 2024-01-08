@@ -183,15 +183,16 @@ int main (void) {
                 // Foot tip position
                 float xLeg =   l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
                 float yLeg = - l_AC*cos(th1 + th2) - l_DE*cos(th1) - l_OB*cos(th1);
-                // Foot tip velocity
-                float dxLeg = Jx_th1 * dth1 + Jx_th2 * dth2;
-                float dyLeg = Jy_th1 * dth1 + Jy_th2 * dth2;
 
                 // Jacobian
                 float Jx_th1 = l_AC*cos(th1 + th2) + l_DE*cos(th1) + l_OB*cos(th1);
                 float Jx_th2 = l_AC*cos(th1 + th2);
                 float Jy_th1 = l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
                 float Jy_th2 = l_AC*sin(th1 + th2);
+                
+                // Foot tip velocity
+                float dxLeg = Jx_th1 * dth1 + Jx_th2 * dth2;
+                float dyLeg = Jy_th1 * dth1 + Jy_th2 * dth2;
 
 
                 float e_x = ( xLeg - xDesFoot);
