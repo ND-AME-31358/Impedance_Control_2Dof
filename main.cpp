@@ -17,7 +17,7 @@ public:
 };
 
 // Define number of communication parameters with matlab
-#define NUM_INPUTS 19
+#define NUM_INPUTS 20
 #define NUM_OUTPUTS 17
 
 Serial pc(USBTX, USBRX,115200);     // USB Serial Terminal for debugging
@@ -43,7 +43,6 @@ MyAnalogIn   CS2(A3);               // Current sensor
 // Create two quadrature encoder
 // 64(counts/motor rev)*18.75(gear ratio) = 1200(counts/rev)
 // Pins A, B, no index, 1200 counts/rev, Quadrature encoding
-// Note: Reversed A & B to match motor direction
 QEI encoder1(D3 ,D5 , NC, 1200 , QEI::X4_ENCODING); 
 QEI encoder2(D14,D15, NC, 1200 , QEI::X4_ENCODING); 
 const float radPerTick = 2.0*PI/1200.0;
@@ -51,7 +50,6 @@ const float radPerTick = 2.0*PI/1200.0;
 // Set motor duty [-1.0f, 1.0f]
 void setMotorDuty(float duty, DigitalOut &INA, DigitalOut &INB, FastPWM &PWM);
 
-const float SupplyVoltage = 12;     // Supply voltage in Volts
 void setMotorVoltage(float voltage, DigitalOut &INA, DigitalOut &INB, FastPWM &PWM);
 
 void currentLoopFunc();
@@ -88,7 +86,6 @@ const float l_AC=.095;
 const float l_DE=.095;
               
 // Timing parameters
-float pwm_period_us;
 float current_control_period_us;
 float impedance_control_period_us;
 
@@ -111,7 +108,8 @@ float Rm;
 float Kb;
 float Kp,Ki;
 float Kf;
-float supply_voltage;
+float SupplyVoltage;
+float duty_max;
 
 int main (void) {
     // Link the terminal with our server and start it up
@@ -131,13 +129,13 @@ int main (void) {
             // Unpack parameters from MATLAB
             
             current_control_period_us   = input_params[0]; // Current control period in micro seconds
-            impedance_control_period_us = input_params[1]; // Impedance control period in microseconds seconds
+            impedance_control_period_us = input_params[1]; // Impedance control period in microseconds
             float ExpTime               = input_params[2]; // Expriement time in second
 
             Rm                          = input_params[3]; // Terminal resistance (Ohms)
             Kb                          = input_params[4]; // Back EMF Constant (V / (rad/s))
             Kf                          = input_params[5]; // Friction coefficienct (Nm / (rad/s))
-            supply_voltage              = input_params[6]; // Power Supply Voltage (V)
+            SupplyVoltage               = input_params[6]; // Power Supply Voltage (V)
 
             angle_init1                 = input_params[7]; // Initial angle for q1 (rad)
             angle_init2                 = input_params[8];// Initial angle for q2 (rad)
@@ -154,6 +152,7 @@ int main (void) {
                         
             xDesFoot                    = input_params[17]; // Desired foot position x (m)
             yDesFoot                    = input_params[18]; // Desired foot position y (m)
+            duty_max                    = input_params[19]; // Maximum duty of PWM
 
 
             // Setup experiment
@@ -179,16 +178,20 @@ int main (void) {
                 const float dth1= velocity1;
                 const float dth2= velocity2;
 
+                
+                // Forward kinematics
+                // Foot tip position
+                float xLeg =   l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
+                float yLeg = - l_AC*cos(th1 + th2) - l_DE*cos(th1) - l_OB*cos(th1);
+                // Foot tip velocity
+                float dxLeg = Jx_th1 * dth1 + Jx_th2 * dth2;
+                float dyLeg = Jy_th1 * dth1 + Jy_th2 * dth2;
+
+                // Jacobian
                 float Jx_th1 = l_AC*cos(th1 + th2) + l_DE*cos(th1) + l_OB*cos(th1);
                 float Jx_th2 = l_AC*cos(th1 + th2);
                 float Jy_th1 = l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
                 float Jy_th2 = l_AC*sin(th1 + th2);
-
-                float xLeg =   l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
-                float yLeg = - l_AC*cos(th1 + th2) - l_DE*cos(th1) - l_OB*cos(th1);
-
-                float dxLeg = Jx_th1 * dth1 + Jx_th2 * dth2;
-                float dyLeg = Jy_th1 * dth1 + Jy_th2 * dth2;
 
 
                 float e_x = ( xLeg - xDesFoot);
@@ -202,15 +205,12 @@ int main (void) {
 
                 
                 // Use jacobian to transform virtual force to torques
-                float tau_des1 = 0;
-                float tau_des2 = 0;
+                float tau_des1 = Kf*velocity1 + Jx_th1*fx + Jy_th1*fy;
+                float tau_des2 = Kf*velocity2 + Jx_th2*fx + Jy_th2*fy;
                 
-                // Set desired currents
-                // current_des1 = (-K_xx * angle1 - D_xx * velocity1 + nu1 * velocity1) / k_emf;
-                // current_des2 = 0;       
-                
-                current_des1 = (Kf*velocity1 + Jx_th1*fx + Jy_th1*fy)/Kb;
-                current_des2 = (Kf*velocity2 + Jx_th2*fx + Jy_th2*fy)/Kb;          
+                // Set desired currents                
+                current_des1 = tau_des1/Kb;
+                current_des2 = tau_des2/Kb;
                             
                 // Form output to send to MATLAB     
                 float output_data[NUM_OUTPUTS];
@@ -299,5 +299,6 @@ void setMotorDuty(float duty, DigitalOut &INA, DigitalOut &INB, FastPWM &PWM)
     // PWM.write(duty);
     // However, we are using a high resolution PWM (FastPWM library). 
     // We have to set the PWM is the following way.
+    duty = min(duty,duty_max);
     PWM.pulsewidth_ticks((int) (PWMperiodTicks*duty));
 }
