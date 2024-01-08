@@ -251,6 +251,7 @@ int main (void) {
             currentLoopTicker.detach();
             server.setExperimentComplete();
             setMotorVoltage(0,M1INA,M1INB,M1PWM);
+            setMotorVoltage(0,M2INA,M2INB,M2PWM);
         } // end if
     } // end while
 } // end main
