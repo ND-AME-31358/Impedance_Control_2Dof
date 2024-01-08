@@ -17,8 +17,8 @@ public:
 };
 
 // Define number of communication parameters with matlab
-#define NUM_INPUTS 9
-#define NUM_OUTPUTS 5
+#define NUM_INPUTS 19
+#define NUM_OUTPUTS 17
 
 Serial pc(USBTX, USBRX,115200);     // USB Serial Terminal for debugging
 ExperimentServer server;            // Object that lets us communicate with MATLAB
@@ -28,17 +28,24 @@ DigitalOut led_g(LED_GREEN,1);      // UDP server state indicator
 
 /************************Complete the code in this block**************************/
 // Assign digital/analog pins for control and sensing
+// Motor 1 - Hip
 FastPWM    M1PWM(D9);               // Motor PWM output (we are using the "FastPWM" rather than built-in "PwmOut" for higher resolution)
 DigitalOut M1INA(D2);               // Motor forward enable
 DigitalOut M1INB(D4);               // Motor backward enable
-MyAnalogIn   CS(A2);                // Current sensor
+MyAnalogIn   CS1(A2);               // Current sensor
+// Motor 2 - Knee
+FastPWM    M2PWM(D10);              // Motor PWM output (we are using the "FastPWM" rather than built-in "PwmOut" for higher resolution)
+DigitalOut M2INA(D7);               // Motor forward enable
+DigitalOut M2INB(D8);               // Motor backward enable
+MyAnalogIn   CS2(A3);               // Current sensor
 /*********************************************************************************/
 
-// Create a quadrature encoder
+// Create two quadrature encoder
 // 64(counts/motor rev)*18.75(gear ratio) = 1200(counts/rev)
 // Pins A, B, no index, 1200 counts/rev, Quadrature encoding
 // Note: Reversed A & B to match motor direction
-QEI encoder(D5,D3, NC, 1200 , QEI::X4_ENCODING); 
+QEI encoder1(D3 ,D5 , NC, 1200 , QEI::X4_ENCODING); 
+QEI encoder2(D14,D15, NC, 1200 , QEI::X4_ENCODING); 
 const float radPerTick = 2.0*PI/1200.0;
 
 // Set motor duty [-1.0f, 1.0f]
@@ -51,18 +58,60 @@ void currentLoopFunc();
 
 
 
-float angle = 0.0;
-float velocity = 0.0;
-float voltage = 0.0;
-float current = 0.0;
-float current_error_int = 0.0;
 
-float current_des   = 0.0f; // Desired current
-float Kp   = 0.0; // Kp proportional gain of current control
-float Ki   = 0.0; // Ki integration gain of current control
-float Rm   = 0.0; // Resistance
-float Kb   = 0.0; // Kb (Back EMF)
-float Kf   = 0.0; // Kf friction coe
+// Variables for q1
+float current1;
+float current_des1;
+float current_error_int1;
+float angle1;
+float angle_des1;
+float velocity1;
+float velocity_des1;
+float motor_voltate1;
+float angle_init1;
+
+// Variables for q2
+float current2;
+float current_des2;
+float current_error_int2;
+float angle2;
+float angle_des2;
+float velocity2;
+float velocity_des2;
+float motor_voltate2;
+float angle_init2;
+
+// Fixed kinematic parameters
+const float l_OA=.010; 
+const float l_OB=.040; 
+const float l_AC=.095; 
+const float l_DE=.095;
+              
+// Timing parameters
+float pwm_period_us;
+float current_control_period_us;
+float impedance_control_period_us;
+
+// Control parameters
+float K_xx;
+float K_yy;
+float K_xy;
+
+float D_xx;
+float D_xy;
+float D_yy;
+
+
+float xDesFoot;
+float yDesFoot;
+
+
+// Model parameters
+float Rm;
+float Kb;
+float Kp,Ki;
+float Kf;
+float supply_voltage;
 
 int main (void) {
     // Link the terminal with our server and start it up
@@ -80,41 +129,114 @@ int main (void) {
     while(1) {
         if (server.getParams(input_params,NUM_INPUTS)) {
             // Unpack parameters from MATLAB
-            float angle_des = input_params[0]; // Desired angle
-            Rm            = input_params[1]; // Resistance of motor
-            Kb            = input_params[2]; // Kb (Back EMF)
-            Kp            = input_params[3]; // Kp proportional gain of current control
-            Ki            = input_params[4]; // Ki integration gain of current control
-            Kf            = input_params[5]; // Kf friction coe
-            float K       = input_params[6]; // KP of impedance
-            float D       = input_params[7]; // KD of impedance
-            float ExpTime = input_params[8]; // Expriement time in second
+            
+            current_control_period_us   = input_params[0]; // Current control period in micro seconds
+            impedance_control_period_us = input_params[1]; // Impedance control period in microseconds seconds
+            float ExpTime               = input_params[2]; // Expriement time in second
+
+            Rm                          = input_params[3]; // Terminal resistance (Ohms)
+            Kb                          = input_params[4]; // Back EMF Constant (V / (rad/s))
+            Kf                          = input_params[5]; // Friction coefficienct (Nm / (rad/s))
+            supply_voltage              = input_params[6]; // Power Supply Voltage (V)
+
+            angle_init1                 = input_params[7]; // Initial angle for q1 (rad)
+            angle_init2                 = input_params[8];// Initial angle for q2 (rad)
+
+            Kp                          = input_params[9]; // Proportional current gain (V/A)
+            Ki                          = input_params[10]; // Ki integration gain of current control
+            K_xx                        = input_params[11]; // Foot stiffness N/m
+            K_yy                        = input_params[12]; // Foot stiffness N/m
+            K_xy                        = input_params[13]; // Foot stiffness N/m
+
+            D_xx                        = input_params[14]; // Foot damping N/(m/s)
+            D_yy                        = input_params[15]; // Foot damping N/(m/s)
+            D_xy                        = input_params[16]; // Foot damping N/(m/s)
+                        
+            xDesFoot                    = input_params[17]; // Desired foot position x (m)
+            yDesFoot                    = input_params[18]; // Desired foot position y (m)
+
 
             // Setup experiment
+            angle1 = 0.0f;
+            angle2 = 0.0f;
+            encoder1.reset();
+            encoder2.reset();
+            current_error_int1 = 0.0f;
+            current_error_int2 = 0.0f;
+            setMotorVoltage(0,M1INA,M1INB,M1PWM);
+            setMotorVoltage(0,M2INA,M2INB,M2PWM);
+            // Set high frequency corrent loop control
+            currentLoopTicker.attach_us(&currentLoopFunc,current_control_period_us);
+
             t.reset();
             t.start();
-            encoder.reset();
-            current_error_int = 0;
-            setMotorVoltage(0,M1INA,M1INB,M1PWM);
-            // Set high frequency corrent loop control
-            currentLoopTicker.attach(&currentLoopFunc,0.0002);
-
             // Run experiment
             while( t.read() < ExpTime ) { 
 
-                current_des = (-(angle-angle_des)*K -velocity*D)/Kb;
+                // Control code HERE
+                const float th1 = angle1;
+                const float th2 = angle2;
+                const float dth1= velocity1;
+                const float dth2= velocity2;
 
-                // Form output to send to MATLAB    
+                float Jx_th1 = l_AC*cos(th1 + th2) + l_DE*cos(th1) + l_OB*cos(th1);
+                float Jx_th2 = l_AC*cos(th1 + th2);
+                float Jy_th1 = l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
+                float Jy_th2 = l_AC*sin(th1 + th2);
+
+                float xLeg =   l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
+                float yLeg = - l_AC*cos(th1 + th2) - l_DE*cos(th1) - l_OB*cos(th1);
+
+                float dxLeg = Jx_th1 * dth1 + Jx_th2 * dth2;
+                float dyLeg = Jy_th1 * dth1 + Jy_th2 * dth2;
+
+
+                float e_x = ( xLeg - xDesFoot);
+                float e_y = ( yLeg - yDesFoot);
+                
+                float de_x = ( dxLeg - 0.0);
+                float de_y = ( dyLeg - 0.0);
+
+                float fx   = -K_xx * e_x - K_xy * e_y - D_xx * de_x -D_xy * de_y;
+                float fy   = -K_yy * e_y - K_xy * e_x - D_yy * de_y -D_xy * de_x;
+
+                
+                // Use jacobian to transform virtual force to torques
+                float tau_des1 = 0;
+                float tau_des2 = 0;
+                
+                // Set desired currents
+                // current_des1 = (-K_xx * angle1 - D_xx * velocity1 + nu1 * velocity1) / k_emf;
+                // current_des2 = 0;       
+                
+                current_des1 = (Kf*velocity1 + Jx_th1*fx + Jy_th1*fy)/Kb;
+                current_des2 = (Kf*velocity2 + Jx_th2*fx + Jy_th2*fy)/Kb;          
+                            
+                // Form output to send to MATLAB     
                 float output_data[NUM_OUTPUTS];
                 output_data[0] = t.read();
-                output_data[1] = angle;
-                output_data[2] = velocity;
-                output_data[3] = voltage;
-                output_data[4] = current;
+                output_data[1] = angle1;
+                output_data[2] = velocity1;  
+                output_data[3] = current1;
+                output_data[4] = current_des1;
+                output_data[5] = motor_voltate1;
+                
+                output_data[6] = angle2;
+                output_data[7] = velocity2;
+                output_data[8] = current2;
+                output_data[9] = current_des2;
+                output_data[10]= motor_voltate2;
+
+                output_data[11] = xLeg;
+                output_data[12] = yLeg;
+                output_data[13] = dxLeg;
+                output_data[14] = dyLeg;
+                output_data[15] = fx;
+                output_data[16] = fy;
                 
                 // Send data to MATLAB
                 server.sendData(output_data,NUM_OUTPUTS);
-                wait(.001);                  // Control and sending data in 1kHz
+                wait_us(impedance_control_period_us);                  // Control and sending data in 1kHz
             }     
             // Cleanup after experiment
             currentLoopTicker.detach();
@@ -129,15 +251,21 @@ void currentLoopFunc(){
 /************************Complete the computation of current sensing***************/
     // Copy current sensing code from previous part
     // Read the current sensor value
-    current = 36.7f * (CS - 0.5f);
+    current1 = 36.7f * (CS1 - 0.5f);
+    current2 = 36.7f * (CS2 - 0.5f);
 /*********************************************************************************/
-    angle = (float)encoder.getPulses()*radPerTick;
-    velocity = encoder.getVelocity()*radPerTick;
-    current_error_int += current - current_des;
+    angle1 = (float)encoder1.getPulses()*radPerTick + angle_init1;
+    velocity1 = encoder1.getVelocity()*radPerTick;
+    current_error_int1 += current1 - current_des1;
+    angle2 = (float)encoder2.getPulses()*radPerTick + angle_init2;
+    velocity2 = encoder2.getVelocity()*radPerTick;
+    current_error_int2 += current2 - current_des2;
 /************************Current Control Code***************/
-    voltage = Rm * current_des + Kb * velocity - Kp*(current - current_des) - Ki*current_error_int;
+    motor_voltate1 = Rm * current_des1 + Kb * velocity1 - Kp*(current1 - current_des1) - Ki*current_error_int1;
+    motor_voltate2 = Rm * current_des2 + Kb * velocity2 - Kp*(current2 - current_des2) - Ki*current_error_int2;
 /*********************************************************************************/
-    setMotorVoltage(voltage,M1INA,M1INB,M1PWM);
+    setMotorVoltage(motor_voltate1,M1INA,M1INB,M1PWM);
+    setMotorVoltage(motor_voltate2,M2INA,M2INB,M2PWM);
 
 }
 
