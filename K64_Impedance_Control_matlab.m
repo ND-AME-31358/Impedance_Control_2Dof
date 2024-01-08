@@ -52,15 +52,17 @@ function output_data = K64_Impedance_Control_matlab()
 %     output_size = 3;    % number of outputs expected
 
 
+    angle_desire  = 1;      % Desired angle in rad
     R_motor       = 1.852;	% Resistance of motor
     Kb            = 0.005;	% Kb (Back EMF)
     Kp            = 3;      % Kp proportional gain of current control
+    Ki            = 0.1;    % Ki Integration gain of current control
     Kf            = 0.0;    % Kf friction coe
     K             = 0.01;	% KP of impedance
     D             = 0.001;	% KD of impedance
     ExpTime       = 3;      % Expriement time in second
     
-    input = [R_motor Kb Kp K D ExpTime];
+    input = [angle_desire R_motor Kb Kp Ki K D ExpTime];
     output_size = 5;
    
     output_data = RunExperiment(frdm_ip,frdm_port,input,output_size,params);
