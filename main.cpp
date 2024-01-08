@@ -18,7 +18,7 @@ public:
 
 // Define number of communication parameters with matlab
 #define NUM_INPUTS 22
-#define NUM_OUTPUTS 17
+#define NUM_OUTPUTS 21
 
 Serial pc(USBTX, USBRX,115200);     // USB Serial Terminal for debugging
 ExperimentServer server;            // Object that lets us communicate with MATLAB
@@ -120,9 +120,12 @@ int main (void) {
     server.init();
     led_g = 0;  // UDP server is ready, turn on green led
 
-    // Setting PWM frequency. Here is 5k Hz, same as the current loop
+    // Setting PWM frequency. Here is 5k Hz
     M1PWM.prescaler(1);
     M1PWM.period_ticks(PWMperiodTicks);
+
+    M2PWM.prescaler(1);
+    M2PWM.period_ticks(PWMperiodTicks);
     
     // Continually get input from MATLAB and run experiments
     float input_params[NUM_INPUTS];
@@ -206,8 +209,10 @@ int main (void) {
                 float e_x = ( xLeg - xd);
                 float e_y = ( yLeg - yd);
                 
-                float de_x = ( dxLeg - 0.0);
-                float de_y = ( dyLeg - 0.0);
+                float dxd = 0.0;
+                float dyd = 0.0;
+                float de_x = ( dxLeg - dxd);
+                float de_y = ( dyLeg - dyd);
 
                 float fx   = -K_xx * e_x - K_xy * e_y - D_xx * de_x -D_xy * de_y;
                 float fy   = -K_yy * e_y - K_xy * e_x - D_yy * de_y -D_xy * de_x;
@@ -242,6 +247,11 @@ int main (void) {
                 output_data[14] = dyLeg;
                 output_data[15] = fx;
                 output_data[16] = fy;
+
+                output_data[17] = xd;
+                output_data[18] = yd;
+                output_data[19] = dxd;
+                output_data[20] = dyd;
                 
                 // Send data to MATLAB
                 server.sendData(output_data,NUM_OUTPUTS);

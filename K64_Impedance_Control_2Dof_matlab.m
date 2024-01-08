@@ -34,7 +34,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     a6 = subplot(424);
     h22 = plot([0],[0]);
     h22.XData = []; h22.YData = [];
-    ylabel('Velocity (counts/s)');
+    ylabel('Velocity (rad/s)');
     
     a7 = subplot(426);
     h32 = plot([0],[0]);
@@ -57,12 +57,19 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     g1.XData = [];
     g1.YData = [];
     ylabel('X Foot Position (m)');
+    subplot(411)
+    g12 = plot([0],[0],'r');
+    g12.XData = [];
+    g12.YData = [];
     
     subplot(412)
     g2 = plot([0],[0]);
     g2.XData = [];
     g2.YData = [];
     ylabel('Y Foot Position (m)');
+    g22 = plot([0],[0],'r');
+    g22.XData = [];
+    g22.YData = [];
     
     subplot(413)
     g3 = plot([0],[0]);
@@ -125,6 +132,9 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
         
         fx = new_data(:,16); % current
         fy = new_data(:,17); % current
+
+        xd = new_data(:,18); % current
+        yd = new_data(:,19); % current
         
 %         
         
@@ -154,8 +164,12 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
         
         g1.XData(end+1:end+N) = t;   
         g1.YData(end+1:end+N) = x;
+        g12.XData(end+1:end+N) = t;   
+        g12.YData(end+1:end+N) = xd;
         g2.XData(end+1:end+N) = t;   
         g2.YData(end+1:end+N) = y;
+        g22.XData(end+1:end+N) = t;   
+        g22.YData(end+1:end+N) = yd;
         g3.XData(end+1:end+N) = t;  
         g3.YData(end+1:end+N) = fx;
         g4.XData(end+1:end+N) = t;   
@@ -185,8 +199,8 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     
     
     %% Parameters for tuning
-    current_control_period_us   = 100;  % Current control period in micro seconds
-    impedance_control_period_us = 500; % Impedance control period in microseconds seconds
+    current_control_period_us   = 200;  % Current control period in micro seconds
+    impedance_control_period_us = 2000; % Impedance control period in microseconds seconds
     exp_period                  = 20;   % Experiment time in seconds 
 
     Rm                        = 3.8244; % Terminal resistance (Ohms)
@@ -259,7 +273,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     colormap()
         
     
-    output_size = 17;    % number of outputs expected
+    output_size = 21;    % number of outputs expected
     output_data = RunExperiment(frdm_ip,frdm_port,input,output_size,params);
     %linkaxes([a1 a2 a3 a4],'x')
 end
