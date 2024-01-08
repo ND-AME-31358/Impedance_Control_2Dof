@@ -176,6 +176,8 @@ int main (void) {
             // Set high frequency corrent loop control
             currentLoopTicker.attach_us(&currentLoopFunc,current_control_period_us);
 
+            float slowStart = 0.0;
+
             t.reset();
             t.start();
             // Run experiment
@@ -204,13 +206,13 @@ int main (void) {
                 float dyLeg = Jy_th1 * dth1 + Jy_th2 * dth2;
 
                 // Desired foot position
-                float xd = xSetFoot;
-                float yd = ySetFoot;
+                float xd = A*sin(2.0*PI*omega*t.read())+ xSetFoot;
+                float yd = A*cos(2.0*PI*omega*t.read())+ ySetFoot;
                 float e_x = ( xLeg - xd);
                 float e_y = ( yLeg - yd);
                 
-                float dxd = 0.0;
-                float dyd = 0.0;
+                float dxd = 2.0*PI*omega*A*cos(2.0*PI*omega*t.read());
+                float dyd = -2.0*PI*omega*A*sin(2.0*PI*omega*t.read());
                 float de_x = ( dxLeg - dxd);
                 float de_y = ( dyLeg - dyd);
 
@@ -223,8 +225,10 @@ int main (void) {
                 float tau_des2 = Kf*velocity2 + Jx_th2*fx + Jy_th2*fy;
                 
                 // Set desired currents                
-                current_des1 = tau_des1/Kb;
-                current_des2 = tau_des2/Kb;
+                current_des1 = slowStart*tau_des1/Kb;
+                current_des2 = slowStart*tau_des2/Kb;
+
+                slowStart = min(slowStart+(impedance_control_period_us/2.0e6),1.0);
                             
                 // Form output to send to MATLAB     
                 float output_data[NUM_OUTPUTS];
