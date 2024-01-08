@@ -91,10 +91,10 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     I2 = .0005;
     I3 = .0005;
     I4 = .0005;
-    l_OA=.010; 
-    l_OB=.040; 
-    l_AC=.095; 
-    l_DE=.095;
+    l_OA=.011; 
+    l_OB=.042; 
+    l_AC=.096; 
+    l_DE=.090;
     
     l_O_m1=1/2 * l_OB; 
     l_B_m2=1/2 * l_AC; 

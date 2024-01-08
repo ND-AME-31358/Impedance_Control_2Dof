@@ -43,8 +43,8 @@ MyAnalogIn   CS2(A3);               // Current sensor
 // Create two quadrature encoder
 // 64(counts/motor rev)*18.75(gear ratio) = 1200(counts/rev)
 // Pins A, B, no index, 1200 counts/rev, Quadrature encoding
-QEI encoder1(D3 ,D5 , NC, 1200 , QEI::X4_ENCODING); 
-QEI encoder2(D14,D15, NC, 1200 , QEI::X4_ENCODING); 
+QEI encoder1(D5 ,D3 , NC, 1200 , QEI::X4_ENCODING); 
+QEI encoder2(D15,D14, NC, 1200 , QEI::X4_ENCODING); 
 const float radPerTick = 2.0*PI/1200.0;
 
 // Set motor duty [-1.0f, 1.0f]
@@ -80,10 +80,10 @@ float motor_voltate2;
 float angle_init2;
 
 // Fixed kinematic parameters
-const float l_OA=.010; 
-const float l_OB=.040; 
-const float l_AC=.095; 
-const float l_DE=.095;
+const float l_OA=.011; 
+const float l_OB=.042; 
+const float l_AC=.096; 
+const float l_DE=.090;
               
 // Timing parameters
 float current_control_period_us;
