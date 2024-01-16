@@ -51,36 +51,61 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     ylabel('Duty Ratio 2 (%)');
     
     
-    figure(3)
-    subplot(411)
+    figure(3);  clf;   
+    subplot(611)
     g1 = plot([0],[0]);
     g1.XData = [];
     g1.YData = [];
     ylabel('X Foot Position (m)');
-    subplot(411)
+    hold on;
     g12 = plot([0],[0],'r');
     g12.XData = [];
     g12.YData = [];
+    hold off;
     
-    subplot(412)
+    subplot(612)
     g2 = plot([0],[0]);
     g2.XData = [];
     g2.YData = [];
     ylabel('Y Foot Position (m)');
+    hold on;
     g22 = plot([0],[0],'r');
     g22.XData = [];
     g22.YData = [];
+    hold off;
     
-    subplot(413)
+    subplot(613)
     g3 = plot([0],[0]);
     g3.XData = [];
     g3.YData = [];
-    ylabel('X Foot Force (m)');
+    ylabel('X Foot Velocity (m/s)');
+    hold on;
+    g32 = plot([0],[0],'r');
+    g32.XData = [];
+    g32.YData = [];
+    hold off;
     
-    subplot(414)
+    subplot(614)
     g4 = plot([0],[0]);
     g4.XData = [];
     g4.YData = [];
+    ylabel('Y Foot Velocity (m/s)');
+    hold on;
+    g42 = plot([0],[0],'r');
+    g42.XData = [];
+    g42.YData = [];
+    hold off;
+    
+    subplot(615)
+    g5 = plot([0],[0]);
+    g5.XData = [];
+    g5.YData = [];
+    ylabel('X Foot Force (m)');
+    
+    subplot(616)
+    g6 = plot([0],[0]);
+    g6.XData = [];
+    g6.YData = [];
     ylabel('Y Foot Force (m)');
     
     
@@ -130,11 +155,16 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
         x = new_data(:,12); % current
         y = new_data(:,13); % current
         
+        dx = new_data(:,14); % current
+        dy = new_data(:,15); % current
+        
         fx = new_data(:,16); % current
         fy = new_data(:,17); % current
 
         xd = new_data(:,18); % current
         yd = new_data(:,19); % current
+        dxd = new_data(:,20); % current
+        dyd = new_data(:,21); % current
         
 %         
         
@@ -171,9 +201,17 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
         g22.XData(end+1:end+N) = t;   
         g22.YData(end+1:end+N) = yd;
         g3.XData(end+1:end+N) = t;  
-        g3.YData(end+1:end+N) = fx;
+        g3.YData(end+1:end+N) = dx;
+        g32.XData(end+1:end+N) = t;  
+        g32.YData(end+1:end+N) = dxd;
         g4.XData(end+1:end+N) = t;   
-        g4.YData(end+1:end+N) = fy;
+        g4.YData(end+1:end+N) = dy;
+        g42.XData(end+1:end+N) = t;   
+        g42.YData(end+1:end+N) = dyd;
+        g5.XData(end+1:end+N) = t;  
+        g5.YData(end+1:end+N) = fx;
+        g6.XData(end+1:end+N) = t;   
+        g6.YData(end+1:end+N) = fy;
         
         
         z = [pos1(end) pos2(end) vel1(end) vel2(end)]';
@@ -201,33 +239,33 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     %% Parameters for tuning
     current_control_period_us   = 200;  % Current control period in micro seconds
     impedance_control_period_us = 2000; % Impedance control period in microseconds seconds
-    exp_period                  = 20;   % Experiment time in seconds 
+    exp_period                  = 14;   % Experiment time in seconds 
 
-    Rm                        = 3.8244; % Terminal resistance (Ohms)
+    Rm                        = 1.9; % Terminal resistance (Ohms)
     Kb                        = .1375; % Back EMF Constant (V / (rad/s))
     Kv                        = 5e-4;% Friction coefficienct (Nm / (rad/s))
     
     supply_voltage           = 12;  % Power Supply Voltage (V)
 
-    angle1_init              = 0; % Initial angle for q1 (rad)
-    angle2_init              = 0.4252; % Initial angle for q2 (rad)
+    angle1_init              = -1.3910; % Initial angle for q1 (rad)
+    angle2_init              = 0.4414; % Initial angle for q2 (rad)
 
     Kp                      = 2;  % Proportional current gain (V/A)
     Ki                      = 0.1; % Integral gain of current controler
     K_xx                    = 30; % Stiffness
-    K_yy                    = 10; % Stiffness
+    K_yy                    = 40; % Stiffness
     K_xy                    = -0.0; % Stiffness
 
     D_xx                     = 0.5; % Damping
-    D_yy                     = 0.3; % Damping
+    D_yy                     = 0.5; % Damping
     D_xy                     = 0.000; % Damping
     
     xDesFoot                 = 0;     % Desired foot position x (m)
-    yDesFoot                 = -0.15; % Desired foot position y (m)
-    A                        = 0.05;  % Magnitude of oscillation (m)
+    yDesFoot                 = -0.13; % Desired foot position y (m)
+    A                        = 0.06;  % Magnitude of oscillation (m)
     omega                    = 1;     % Angular velocity of oscillation (RPS, Revolutions Per Second)
 
-    duty_max                 = 0.2;  % Maximum PWM duty (safety limit)
+    duty_max                 = 1;  % Maximum PWM duty (safety limit)
     
     %% Sepectify inputs
     input = [current_control_period_us impedance_control_period_us exp_period];
