@@ -110,7 +110,7 @@ float omega;
 float Rm;
 float Kb;
 float Kp,Ki;
-float Kf;
+float Kv;
 float SupplyVoltage;
 float duty_max;
 
@@ -140,7 +140,7 @@ int main (void) {
 
             Rm                          = input_params[3]; // Terminal resistance (Ohms)
             Kb                          = input_params[4]; // Back EMF Constant (V / (rad/s))
-            Kf                          = input_params[5]; // Friction coefficienct (Nm / (rad/s))
+            Kv                          = input_params[5]; // Friction coefficienct (Nm / (rad/s))
             SupplyVoltage               = input_params[6]; // Power Supply Voltage (V)
 
             angle_init1                 = input_params[7]; // Initial angle for q1 (rad)
@@ -176,12 +176,14 @@ int main (void) {
             // Set high frequency corrent loop control
             currentLoopTicker.attach_us(&currentLoopFunc,current_control_period_us);
 
-            float slowStart = 0.0;
+            float softStart = 0.0;
 
             t.reset();
             t.start();
             // Run experiment
             while( t.read() < ExpTime ) { 
+                // Soft start: fully actuation after 2 seconds
+                softStart = min(0.5*t.read(),1.0);
 
                 // Control code HERE
                 const float th1 = angle1;
@@ -221,14 +223,12 @@ int main (void) {
 
                 
                 // Use jacobian to transform virtual force to torques
-                float tau_des1 = Kf*velocity1 + Jx_th1*fx + Jy_th1*fy;
-                float tau_des2 = Kf*velocity2 + Jx_th2*fx + Jy_th2*fy;
+                float tau_des1 = Kv*velocity1 + Jx_th1*fx + Jy_th1*fy;
+                float tau_des2 = Kv*velocity2 + Jx_th2*fx + Jy_th2*fy;
                 
                 // Set desired currents                
-                current_des1 = slowStart*tau_des1/Kb;
-                current_des2 = slowStart*tau_des2/Kb;
-
-                slowStart = min(slowStart+(impedance_control_period_us/2.0e6),1.0);
+                current_des1 = softStart*tau_des1/Kb;
+                current_des2 = softStart*tau_des2/Kb;
                             
                 // Form output to send to MATLAB     
                 float output_data[NUM_OUTPUTS];
