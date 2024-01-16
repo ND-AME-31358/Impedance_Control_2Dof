@@ -159,7 +159,7 @@ int main (void) {
             xSetFoot                    = input_params[17]; // Foot position set point x (m)
             ySetFoot                    = input_params[18]; // Foot position set point y (m)
             A                           = input_params[19]; // Magnitude of oscillation (m)
-            omega                       = input_params[20]; // Angular velocity of oscillation (RPS, Revolutions Per Second)
+            omega                       = input_params[20]; // Frequency of oscillation (Hz)
 
             duty_max                    = input_params[21]; // Maximum duty of PWM
 
