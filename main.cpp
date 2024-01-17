@@ -80,10 +80,10 @@ float motor_voltate2;
 float angle_init2;
 
 // Fixed kinematic parameters
-const float l_OA=.011; 
-const float l_OB=.042; 
-const float l_AC=.096; 
-const float l_DE=.090;
+const float l_OA=.011; // length between point O and A
+const float l_OB=.042; // length between point O and B
+const float l_AC=.096; // length between point A and C
+const float l_DE=.090; // length between point D and E
               
 // Timing parameters
 float current_control_period_us;

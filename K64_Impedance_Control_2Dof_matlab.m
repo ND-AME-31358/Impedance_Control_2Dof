@@ -52,7 +52,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     
     
     figure(3);  clf;   
-    subplot(611)
+    subplot(321)
     g1 = plot([0],[0]);
     g1.XData = [];
     g1.YData = [];
@@ -63,7 +63,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     g12.YData = [];
     hold off;
     
-    subplot(612)
+    subplot(322)
     g2 = plot([0],[0]);
     g2.XData = [];
     g2.YData = [];
@@ -74,7 +74,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     g22.YData = [];
     hold off;
     
-    subplot(613)
+    subplot(323)
     g3 = plot([0],[0]);
     g3.XData = [];
     g3.YData = [];
@@ -85,7 +85,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     g32.YData = [];
     hold off;
     
-    subplot(614)
+    subplot(324)
     g4 = plot([0],[0]);
     g4.XData = [];
     g4.YData = [];
@@ -96,13 +96,13 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     g42.YData = [];
     hold off;
     
-    subplot(615)
+    subplot(325)
     g5 = plot([0],[0]);
     g5.XData = [];
     g5.YData = [];
     ylabel('X Foot Force (m)');
     
-    subplot(616)
+    subplot(326)
     g6 = plot([0],[0]);
     g6.XData = [];
     g6.YData = [];
@@ -252,6 +252,8 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
 
     Kp                      = 2;  % Proportional current gain (V/A)
     Ki                      = 0.1; % Integral gain of current controler
+
+    // *** Cartesian Gains *** //
     K_xx                    = 30; % Stiffness
     K_yy                    = 40; % Stiffness
     K_xy                    = -0.0; % Stiffness
@@ -259,6 +261,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     D_xx                     = 0.5; % Damping
     D_yy                     = 0.5; % Damping
     D_xy                     = 0.000; % Damping
+    // *** End ***///
     
     xDesFoot                 = 0;     % Desired foot position x (m)
     yDesFoot                 = -0.13; % Desired foot position y (m)
