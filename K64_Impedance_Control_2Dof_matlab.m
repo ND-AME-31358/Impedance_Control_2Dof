@@ -244,8 +244,6 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     Rm                        = 1.9; % Terminal resistance (Ohms)
     Kb                        = .1375; % Back EMF Constant (V / (rad/s))
     Kv                        = 5e-4;% Friction coefficienct (Nm / (rad/s))
-    
-    supply_voltage           = 12;  % Power Supply Voltage (V)
 
     angle1_init              = -1.3910; % Initial angle for q1 (rad)
     angle2_init              = 0.4414; % Initial angle for q2 (rad)
@@ -272,7 +270,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     
     %% Sepectify inputs
     input = [current_control_period_us impedance_control_period_us exp_period];
-    input = [input Rm Kb Kv supply_voltage angle1_init angle2_init];
+    input = [input Rm Kb Kv angle1_init angle2_init];
     input = [input Kp Ki K_xx K_yy K_xy D_xx D_yy D_xy xDesFoot yDesFoot A omega];
     input = [input duty_max];
     params.timeout  = exp_period;  

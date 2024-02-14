@@ -23,7 +23,7 @@ public:
 /* --------------------------------------------------- */
 
 // Define number of communication parameters with matlab
-#define NUM_INPUTS 22
+#define NUM_INPUTS 21
 #define NUM_OUTPUTS 21
 
 Serial pc(USBTX, USBRX,115200);     // USB Serial Terminal for debugging
@@ -55,6 +55,7 @@ const float radPerTick = 2.0*PI/1200.0;
 // Set motor duty [-1.0f, 1.0f]
 void setMotorDuty(float duty, DigitalOut &INA, DigitalOut &INB, FastPWM &PWM);
 
+const float SupplyVoltage = 12;     // Supply voltage in Volts
 // Set motor voltage in (V)
 void setMotorVoltage(float voltage, DigitalOut &INA, DigitalOut &INB, FastPWM &PWM);
 
@@ -62,31 +63,29 @@ void setMotorVoltage(float voltage, DigitalOut &INA, DigitalOut &INB, FastPWM &P
 // Please refer to the latter part of this file for its definition (implementation).
 void currentLoopFunc();
 
-
-
 // Declare global variables
 
-// Variables for q1
-float current1;
-float current_des1;
-float current_error_int1;
-float angle1;
-float angle_des1;
-float velocity1;
-float velocity_des1;
-float motor_voltate1;
-float angle_init1;
+// Variables for joint 1 (Hip)
+float current1;           // Current on motor 1
+float current_des1;       // Desired current of motor 1
+float current_error_int1; // Integrated current error
+float angle1;             // Angle of joint 1
+float angle_des1;         // Desired angle of joint 1
+float velocity1;          // Angular velocity of joint 1
+float velocity_des1;      // Desired angular velocity
+float motor_voltage1;     // Command voltage on motor 1
+float angle_init1;        // Initial angle of joint 1
 
-// Variables for q2
-float current2;
-float current_des2;
-float current_error_int2;
-float angle2;
-float angle_des2;
-float velocity2;
-float velocity_des2;
-float motor_voltate2;
-float angle_init2;
+// Variables for joint 2 (Knee)
+float current2;           // Current on motor 2
+float current_des2;       // Desired current of motor 2
+float current_error_int2; // Integrated current error
+float angle2;             // Angle of joint 2
+float angle_des2;         // Desired angle of joint 2
+float velocity2;          // Angular velocity of joint 2
+float velocity_des2;      // Desired angular velocity
+float motor_voltage2;     // Command voltage on motor 2
+float angle_init2;        // Initial angle of joint 2
 
 // Fixed kinematic parameters
 const float l_OA=.011; // length between point O and A
@@ -99,29 +98,28 @@ float current_control_period_us;
 float impedance_control_period_us;
 
 // Control parameters
-float K_xx;
-float K_yy;
-float K_xy;
+float K_xx; // Foot stiffness (N/m)
+float K_yy; // Foot stiffness (N/m)
+float K_xy; // Foot stiffness (N/m)
 
-float D_xx;
-float D_xy;
-float D_yy;
+float D_xx; // Foot damping (N/(m/s))
+float D_xy; // Foot damping (N/(m/s))
+float D_yy; // Foot damping (N/(m/s))
 
 
-float xSetFoot;
-float ySetFoot;
+float xSetFoot; // Foot position set point (m)
+float ySetFoot; // Foot position set point (m)
 
-float A;
-float omega;
+float A;        // Amplitude of oscillation (m) in Part. 4
+float omega;    // Frequency of oscillation (Hz) in Part. 4
 
 
 // Model parameters
-float Rm;
-float kb;
-float Kp,Ki;
-float kv;
-float SupplyVoltage;
-float duty_max;
+float Rm;       // Motor winding resistance (Ohm)
+float kb;       // Back EMF constant (V/(rad/s))
+float Kp,Ki;    // Current controller gains
+float kv;       // Coefficient of viscous friction (Nm/(rad/s))
+float duty_max; // Maximum PWM duty in range [0,1] for safety
 
 /* Main function that would run on the FRDM board
  * Note: unlike Arduino, we do not have a setup function and a loop function
@@ -152,30 +150,29 @@ int main (void) {
             impedance_control_period_us = input_params[1]; // Impedance control period in microseconds
             float ExpTime               = input_params[2]; // Expriement time in second
 
-            Rm                          = input_params[3]; // Terminal resistance (Ohms)
+            Rm                          = input_params[3]; // Motor winding resistance (Ohms)
             kb                          = input_params[4]; // Back EMF Constant (V / (rad/s))
             kv                          = input_params[5]; // Friction coefficienct (Nm / (rad/s))
-            SupplyVoltage               = input_params[6]; // Power Supply Voltage (V)
 
-            angle_init1                 = input_params[7]; // Initial angle for q1 (rad)
-            angle_init2                 = input_params[8];// Initial angle for q2 (rad)
+            angle_init1                 = input_params[6]; // Initial angle for joint 1 (rad)
+            angle_init2                 = input_params[7]; // Initial angle for joint 2 (rad)
 
-            Kp                          = input_params[9]; // Proportional current gain (V/A)
-            Ki                          = input_params[10]; // Ki integration gain of current control
-            K_xx                        = input_params[11]; // Foot stiffness N/m
-            K_yy                        = input_params[12]; // Foot stiffness N/m
-            K_xy                        = input_params[13]; // Foot stiffness N/m
+            Kp                          = input_params[8]; // Kp Proportional current gain (V/A)
+            Ki                          = input_params[9]; // Ki integration gain (V/As)
+            K_xx                        = input_params[10]; // Foot stiffness N/m
+            K_yy                        = input_params[11]; // Foot stiffness N/m
+            K_xy                        = input_params[12]; // Foot stiffness N/m
 
-            D_xx                        = input_params[14]; // Foot damping N/(m/s)
-            D_yy                        = input_params[15]; // Foot damping N/(m/s)
-            D_xy                        = input_params[16]; // Foot damping N/(m/s)
+            D_xx                        = input_params[13]; // Foot damping N/(m/s)
+            D_yy                        = input_params[14]; // Foot damping N/(m/s)
+            D_xy                        = input_params[15]; // Foot damping N/(m/s)
                         
-            xSetFoot                    = input_params[17]; // Foot position set point x (m)
-            ySetFoot                    = input_params[18]; // Foot position set point y (m)
-            A                           = input_params[19]; // Magnitude of oscillation (m)
-            omega                       = input_params[20]; // Frequency of oscillation (Hz)
+            xSetFoot                    = input_params[16]; // Foot position set point x (m)
+            ySetFoot                    = input_params[17]; // Foot position set point y (m)
+            A                           = input_params[18]; // Magnitude of oscillation (m)
+            omega                       = input_params[19]; // Frequency of oscillation (Hz)
 
-            duty_max                    = input_params[21]; // Maximum duty of PWM
+            duty_max                    = input_params[20]; // Maximum duty of PWM
 
 
             // Setup experiment
@@ -226,16 +223,16 @@ int main (void) {
                 // Desired foot position
                 float xd = A*sin(2.0*PI*omega*t.read())+ xSetFoot;
                 float yd = A*cos(2.0*PI*omega*t.read())+ ySetFoot;
-                float e_x = ( xLeg - xd);
-                float e_y = ( yLeg - yd);
+                float e_x = ( xd - xLeg );
+                float e_y = ( yd - yLeg );
                 
-                float dxd = 2.0*PI*omega*A*cos(2.0*PI*omega*t.read());
+                float dxd =  2.0*PI*omega*A*cos(2.0*PI*omega*t.read());
                 float dyd = -2.0*PI*omega*A*sin(2.0*PI*omega*t.read());
-                float de_x = ( dxLeg - dxd);
-                float de_y = ( dyLeg - dyd);
+                float de_x = ( dxd - dxLeg );
+                float de_y = ( dyd - dyLeg );
 
-                float fx   = -K_xx * e_x - K_xy * e_y - D_xx * de_x -D_xy * de_y;
-                float fy   = -K_yy * e_y - K_xy * e_x - D_yy * de_y -D_xy * de_x;
+                float fx   = K_xx * e_x + K_xy * e_y + D_xx * de_x + D_xy * de_y;
+                float fy   = K_yy * e_y + K_xy * e_x + D_yy * de_y + D_xy * de_x;
 
                 
                 // Use jacobian to transform virtual force to torques
@@ -243,8 +240,8 @@ int main (void) {
                 float tau_des2 = kv*velocity2 + Jx_th2*fx + Jy_th2*fy;
                 
                 // Set desired currents                
-                current_des1 = softStart*tau_des1/kb;
-                current_des2 = softStart*tau_des2/kb;
+                current_des1 = softStart * tau_des1/kb;
+                current_des2 = softStart * tau_des2/kb;
                 
                 // Fill the output data to send back to MATLAB
                 float output_data[NUM_OUTPUTS];
@@ -253,13 +250,13 @@ int main (void) {
                 output_data[2] = velocity1;  
                 output_data[3] = current1;
                 output_data[4] = current_des1;
-                output_data[5] = motor_voltate1;
+                output_data[5] = motor_voltage1;
                 
                 output_data[6] = angle2;
                 output_data[7] = velocity2;
                 output_data[8] = current2;
                 output_data[9] = current_des2;
-                output_data[10]= motor_voltate2;
+                output_data[10]= motor_voltage2;
 
                 output_data[11] = xLeg;
                 output_data[12] = yLeg;
@@ -309,11 +306,11 @@ void currentLoopFunc(){
     current_error_int2 += current_des2 - current2;
 
     // Current controller: compute command voltage on motor
-    motor_voltate1 = Rm * current_des1 + kb * velocity1 + Kp*(current_des1 - current1) + Ki*current_error_int1;
-    motor_voltate2 = Rm * current_des2 + kb * velocity2 + Kp*(current_des2 - current2) + Ki*current_error_int2;
+    motor_voltage1 = Rm * current_des1 + kb * velocity1 + Kp*(current_des1 - current1) + Ki*current_error_int1;
+    motor_voltage2 = Rm * current_des2 + kb * velocity2 + Kp*(current_des2 - current2) + Ki*current_error_int2;
     
-    setMotorVoltage(motor_voltate1,M1INA,M1INB,M1PWM);
-    setMotorVoltage(motor_voltate2,M2INA,M2INB,M2PWM);
+    setMotorVoltage(motor_voltage1,M1INA,M1INB,M1PWM);
+    setMotorVoltage(motor_voltage2,M2INA,M2INB,M2PWM);
 
 }
 
