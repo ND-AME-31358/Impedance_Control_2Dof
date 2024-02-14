@@ -8,13 +8,19 @@
 #define PWMfrequency 5000
 #define PWMperiodTicks 12000 // == 60 000 000 / PWMfrequency
 
-// Trick to bypass ISR error
+/* --------------------------------------------------- 
+ * Implementing a workaround to bypass an ISR-related error by substituting 
+   the standard AnalogIn with our custom MyAnalogIn class throughout the experiment. 
+   This change is crucial but the details are not essential for understanding the overall experiment setup.
+   Please ignore the implementation but use MyAnalogIn everytime you want to use AnalogIn
+*/
 class MyAnalogIn : public AnalogIn {
 public:
     MyAnalogIn(PinName inp) : AnalogIn(inp) { }
     virtual void lock() { }
     virtual void unlock() { }
 };
+/* --------------------------------------------------- */
 
 // Define number of communication parameters with matlab
 #define NUM_INPUTS 22
@@ -26,7 +32,6 @@ Timer t;                            // Timer to measure elapsed time of experime
 Ticker currentLoopTicker;           // Ticker to call high frequency current loop
 DigitalOut led_g(LED_GREEN,1);      // UDP server state indicator
 
-/************************Complete the code in this block**************************/
 // Assign digital/analog pins for control and sensing
 // Motor 1 - Hip
 FastPWM    M1PWM(D9);               // Motor PWM output (we are using the "FastPWM" rather than built-in "PwmOut" for higher resolution)
@@ -38,11 +43,11 @@ FastPWM    M2PWM(D10);              // Motor PWM output (we are using the "FastP
 DigitalOut M2INA(D7);               // Motor forward enable
 DigitalOut M2INB(D8);               // Motor backward enable
 MyAnalogIn   CS2(A3);               // Current sensor
-/*********************************************************************************/
 
 // Create two quadrature encoder
 // 64(counts/motor rev)*18.75(gear ratio) = 1200(counts/rev)
 // Pins A, B, no index, 1200 counts/rev, Quadrature encoding
+// Note: Reversed A & B to match motor direction
 QEI encoder1(D5 ,D3 , NC, 1200 , QEI::X4_ENCODING); 
 QEI encoder2(D15,D14, NC, 1200 , QEI::X4_ENCODING); 
 const float radPerTick = 2.0*PI/1200.0;
@@ -50,12 +55,16 @@ const float radPerTick = 2.0*PI/1200.0;
 // Set motor duty [-1.0f, 1.0f]
 void setMotorDuty(float duty, DigitalOut &INA, DigitalOut &INB, FastPWM &PWM);
 
+// Set motor voltage in (V)
 void setMotorVoltage(float voltage, DigitalOut &INA, DigitalOut &INB, FastPWM &PWM);
 
+// Declaration of current current control function.
+// Please refer to the latter part of this file for its definition (implementation).
 void currentLoopFunc();
 
 
 
+// Declare global variables
 
 // Variables for q1
 float current1;
@@ -108,19 +117,23 @@ float omega;
 
 // Model parameters
 float Rm;
-float Kb;
+float kb;
 float Kp,Ki;
-float Kv;
+float kv;
 float SupplyVoltage;
 float duty_max;
 
+/* Main function that would run on the FRDM board
+ * Note: unlike Arduino, we do not have a setup function and a loop function
+ * The main function would only run once. To have a loop, we have to use while loop by ourselves
+*/ 
 int main (void) {
     // Link the terminal with our server and start it up
     server.attachTerminal(pc);
     server.init();
     led_g = 0;  // UDP server is ready, turn on green led
 
-    // Setting PWM frequency. Here is 5k Hz
+    // Setting PWM frequency. Here is 5k Hz, same as the current loop
     M1PWM.prescaler(1);
     M1PWM.period_ticks(PWMperiodTicks);
 
@@ -130,6 +143,7 @@ int main (void) {
     // Continually get input from MATLAB and run experiments
     float input_params[NUM_INPUTS];
     
+    // infinite while loop, analogous to Arduino's loop function
     while(1) {
         if (server.getParams(input_params,NUM_INPUTS)) {
             // Unpack parameters from MATLAB
@@ -139,8 +153,8 @@ int main (void) {
             float ExpTime               = input_params[2]; // Expriement time in second
 
             Rm                          = input_params[3]; // Terminal resistance (Ohms)
-            Kb                          = input_params[4]; // Back EMF Constant (V / (rad/s))
-            Kv                          = input_params[5]; // Friction coefficienct (Nm / (rad/s))
+            kb                          = input_params[4]; // Back EMF Constant (V / (rad/s))
+            kv                          = input_params[5]; // Friction coefficienct (Nm / (rad/s))
             SupplyVoltage               = input_params[6]; // Power Supply Voltage (V)
 
             angle_init1                 = input_params[7]; // Initial angle for q1 (rad)
@@ -169,17 +183,19 @@ int main (void) {
             angle2 = 0.0f;
             encoder1.reset();
             encoder2.reset();
-            current_error_int1 = 0.0f;
-            current_error_int2 = 0.0f;
-            setMotorVoltage(0,M1INA,M1INB,M1PWM);
-            setMotorVoltage(0,M2INA,M2INB,M2PWM);
-            // Set high frequency corrent loop control
+            current_error_int1 = 0.0f; // Reset integration of current error
+            current_error_int2 = 0.0f; // Reset integration of current error
+            setMotorVoltage(0,M1INA,M1INB,M1PWM); //Turn off motor just in case
+            setMotorVoltage(0,M2INA,M2INB,M2PWM); //Turn off motor just in case
+            // Set high-frequency (low-level) current control loop
+            // 0.0002 gives the loop period, which means current loop is under 5kHz
             currentLoopTicker.attach_us(&currentLoopFunc,current_control_period_us);
 
-            float softStart = 0.0;
+            float softStart = 0.0; // Soft start scalar that prevent the sudden motion at the begining
 
-            t.reset();
-            t.start();
+            t.reset(); // Reset timer
+            t.start(); // Start timer so that we have elapsed time of experiment
+
             // Run experiment
             while( t.read() < ExpTime ) { 
                 // Soft start: fully actuation after 2 seconds
@@ -223,14 +239,14 @@ int main (void) {
 
                 
                 // Use jacobian to transform virtual force to torques
-                float tau_des1 = Kv*velocity1 + Jx_th1*fx + Jy_th1*fy;
-                float tau_des2 = Kv*velocity2 + Jx_th2*fx + Jy_th2*fy;
+                float tau_des1 = kv*velocity1 + Jx_th1*fx + Jy_th1*fy;
+                float tau_des2 = kv*velocity2 + Jx_th2*fx + Jy_th2*fy;
                 
                 // Set desired currents                
-                current_des1 = softStart*tau_des1/Kb;
-                current_des2 = softStart*tau_des2/Kb;
-                            
-                // Form output to send to MATLAB     
+                current_des1 = softStart*tau_des1/kb;
+                current_des2 = softStart*tau_des2/kb;
+                
+                // Fill the output data to send back to MATLAB
                 float output_data[NUM_OUTPUTS];
                 output_data[0] = t.read();
                 output_data[1] = angle1;
@@ -259,35 +275,43 @@ int main (void) {
                 
                 // Send data to MATLAB
                 server.sendData(output_data,NUM_OUTPUTS);
-                wait_us(impedance_control_period_us);                  // Control and sending data in 1kHz
-            }     
+                wait_us(impedance_control_period_us); // Running high-level control loop and sending data in 
+                                                      // roughly (1e6/impedance_control_period_us) Hz
+            } // end of high-level experiment loop
+
             // Cleanup after experiment
             currentLoopTicker.detach();
             server.setExperimentComplete();
             setMotorVoltage(0,M1INA,M1INB,M1PWM);
             setMotorVoltage(0,M2INA,M2INB,M2PWM);
-        } // end if
-    } // end while
+        } // end if of "check whether we have parameter"
+    } // end while of "infinite while loop"
 } // end main
 
-
+/* Current controller function (low-level control)
+ * This function would be called by the Ticker:currentLoopTicker under 5kHz
+ * This function reads motor state (e.g. angle, current), and set motor voltage
+*/
 void currentLoopFunc(){
-/************************Complete the computation of current sensing***************/
-    // Copy current sensing code from previous part
+    
     // Read the current sensor value
-    current1 = 36.7f * (CS1 - 0.5f);
-    current2 = 36.7f * (CS2 - 0.5f);
-/*********************************************************************************/
-    angle1 = (float)encoder1.getPulses()*radPerTick + angle_init1;
-    velocity1 = encoder1.getVelocity()*radPerTick;
-    current_error_int1 += current1 - current_des1;
-    angle2 = (float)encoder2.getPulses()*radPerTick + angle_init2;
-    velocity2 = encoder2.getVelocity()*radPerTick;
-    current_error_int2 += current2 - current_des2;
-/************************Current Control Code***************/
-    motor_voltate1 = Rm * current_des1 + Kb * velocity1 - Kp*(current1 - current_des1) - Ki*current_error_int1;
-    motor_voltate2 = Rm * current_des2 + Kb * velocity2 - Kp*(current2 - current_des2) - Ki*current_error_int2;
-/*********************************************************************************/
+    current1 = 36.666667f * (CS1 - 0.5f);
+    current2 = 36.666667f * (CS2 - 0.5f);
+    
+    // Read angle and velocity from encoder
+    angle1    = (float)encoder1.getPulses()   * radPerTick + angle_init1;   // in rad
+    velocity1 =        encoder1.getVelocity() * radPerTick;                 // in rad/s
+    angle2    = (float)encoder2.getPulses()   * radPerTick + angle_init2;   // in rad
+    velocity2 =        encoder2.getVelocity() * radPerTick;                 // in rad/s
+
+    // Integrate the current errors
+    current_error_int1 += current_des1 - current1;
+    current_error_int2 += current_des2 - current2;
+
+    // Current controller: compute command voltage on motor
+    motor_voltate1 = Rm * current_des1 + kb * velocity1 + Kp*(current_des1 - current1) + Ki*current_error_int1;
+    motor_voltate2 = Rm * current_des2 + kb * velocity2 + Kp*(current_des2 - current2) + Ki*current_error_int2;
+    
     setMotorVoltage(motor_voltate1,M1INA,M1INB,M1PWM);
     setMotorVoltage(motor_voltate2,M2INA,M2INB,M2PWM);
 
