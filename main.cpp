@@ -88,10 +88,10 @@ float motor_voltage2;     // Command voltage on motor 2
 float angle_init2;        // Initial angle of joint 2
 
 // Fixed kinematic parameters
-const float l_OA=.011; // length between point O and A
-const float l_OB=.042; // length between point O and B
-const float l_AC=.096; // length between point A and C
-const float l_DE=.090; // length between point D and E
+const float l_OA=.011; // length between point O and A (m)
+const float l_OB=.042; // length between point O and B (m)
+const float l_AC=.096; // length between point A and C (m)
+const float l_DE=.090; // length between point D and E (m)
               
 // Timing parameters
 float current_control_period_us;
@@ -197,8 +197,16 @@ int main (void) {
             while( t.read() < ExpTime ) { 
                 // Soft start: fully actuation after 2 seconds
                 softStart = min(0.5*t.read(),1.0);
-
-                // Control code HERE
+                
+                
+                /* ===== Complete the code in this block =====
+                 * Complate the Cartesian space impedance controller belowe
+                 * Note: the variable l_OA, l_OB, l_AC, and l_DE represent 
+                 * the length of OA, OB, AC, and DE respectively.
+                */
+                // Copy the angle and angular velocity for later use. 
+                // Please do use th1/th2 and dth1/dth2 rather than angle1/angle2 
+                // and velocity1/velocity2 in this code block
                 const float th1 = angle1;
                 const float th2 = angle2;
                 const float dth1= velocity1;
@@ -206,42 +214,46 @@ int main (void) {
 
                 
                 // Forward kinematics
-                // Foot tip position
-                float xLeg =   l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
-                float yLeg = - l_AC*cos(th1 + th2) - l_DE*cos(th1) - l_OB*cos(th1);
+                // Foot tip position ******TO BE COMPLETED******
+                float xLeg = 0.0; //   l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
+                float yLeg = 0.0; // - l_AC*cos(th1 + th2) - l_DE*cos(th1) - l_OB*cos(th1);
 
-                // Jacobian
-                float Jx_th1 = l_AC*cos(th1 + th2) + l_DE*cos(th1) + l_OB*cos(th1);
-                float Jx_th2 = l_AC*cos(th1 + th2);
-                float Jy_th1 = l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
-                float Jy_th2 = l_AC*sin(th1 + th2);
+                // Compute the Jacobian ******TO BE COMPLETED******
+                float Jx_th1 = 0.0; // l_AC*cos(th1 + th2) + l_DE*cos(th1) + l_OB*cos(th1);
+                float Jx_th2 = 0.0; // l_AC*cos(th1 + th2);
+                float Jy_th1 = 0.0; // l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
+                float Jy_th2 = 0.0; // l_AC*sin(th1 + th2);
 
-                // Foot tip velocity
-                float dxLeg = Jx_th1 * dth1 + Jx_th2 * dth2;
-                float dyLeg = Jy_th1 * dth1 + Jy_th2 * dth2;
+                // Compute the foot tip velocity ******TO BE COMPLETED******
+                float dxLeg = 0.0; // Jx_th1 * dth1 + Jx_th2 * dth2;
+                float dyLeg = 0.0; // Jy_th1 * dth1 + Jy_th2 * dth2;
 
-                // Desired foot position
-                float xd = A*sin(2.0*PI*omega*t.read())+ xSetFoot;
-                float yd = A*cos(2.0*PI*omega*t.read())+ ySetFoot;
+                // Assign desired foot position
+                float xd = xSetFoot;
+                float yd = ySetFoot;
+                // Compute the position error
                 float e_x = ( xd - xLeg );
                 float e_y = ( yd - yLeg );
                 
-                float dxd =  2.0*PI*omega*A*cos(2.0*PI*omega*t.read());
-                float dyd = -2.0*PI*omega*A*sin(2.0*PI*omega*t.read());
+                // Assign desired foot velocity
+                float dxd = 0.0;    // Keep this until Part 4
+                float dyd = 0.0;    // Keep this until Part 4
+                // Compute the velocity error
                 float de_x = ( dxd - dxLeg );
                 float de_y = ( dyd - dyLeg );
 
-                float fx   = K_xx * e_x + K_xy * e_y + D_xx * de_x + D_xy * de_y;
-                float fy   = K_yy * e_y + K_xy * e_x + D_yy * de_y + D_xy * de_x;
+                // Compute the applied virtual force at foot tip ******TO BE COMPLETED******
+                float fx   = 0.0; // K_xx * e_x + K_xy * e_y + D_xx * de_x + D_xy * de_y;
+                float fy   = 0.0; // K_yy * e_y + K_xy * e_x + D_yy * de_y + D_xy * de_x;
 
+                // Use jacobian to transform virtual force to torques ******TO BE COMPLETED******
+                float tau_des1 = 0.0; // kv*velocity1 + Jx_th1*fx + Jy_th1*fy;
+                float tau_des2 = 0.0; // kv*velocity2 + Jx_th2*fx + Jy_th2*fy;
                 
-                // Use jacobian to transform virtual force to torques
-                float tau_des1 = kv*velocity1 + Jx_th1*fx + Jy_th1*fy;
-                float tau_des2 = kv*velocity2 + Jx_th2*fx + Jy_th2*fy;
-                
-                // Set desired currents                
+                // Set desired currents
                 current_des1 = softStart * tau_des1/kb;
                 current_des2 = softStart * tau_des2/kb;
+                /* ===== End of code block =================== */
                 
                 // Fill the output data to send back to MATLAB
                 float output_data[NUM_OUTPUTS];
