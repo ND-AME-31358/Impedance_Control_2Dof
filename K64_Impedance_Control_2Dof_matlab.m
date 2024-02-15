@@ -108,6 +108,22 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     g6.YData = [];
     ylabel('Y Foot Force (m)');
     
+    figure(4);  clf;   
+    w1 = plot([0], [0]);
+    w1.XData = [];
+    w1.YData = [];
+    hold on
+    w2 = plot([0], [0],'r');
+    w2.XData = [];
+    w2.YData = [];
+    hold off
+    legend('Foot Position', 'Target Position');
+    xlabel('X Foot Position (m)')
+    ylabel('Y Foot Position (m)');
+    axis equal
+%     xlim();
+    title('Foot Position in Plane');
+    
     
     h_OB = 0;
     h_AC = 0;
@@ -213,6 +229,11 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
         g6.XData(end+1:end+N) = t;   
         g6.YData(end+1:end+N) = fy;
         
+        w1.XData(end+1:end+N) = [x];
+        w1.YData(end+1:end+N) = [y];
+        w2.XData(end+1:end+N) = [xd];
+        w2.YData(end+1:end+N) = [yd];
+        
         
         z = [pos1(end) pos2(end) vel1(end) vel2(end)]';
         keypoints = keypoints_leg(z,p);
@@ -239,7 +260,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     %% Parameters for tuning
     current_control_period_us   = 200;  % Current control period in micro seconds
     impedance_control_period_us = 2000; % Impedance control period in microseconds seconds
-    exp_period                  = 14;   % Experiment time in seconds 
+    exp_period                  = 10;   % Experiment time in seconds 
 
     Rm                        = 1.9; % Terminal resistance (Ohms)
     Kb                        = .1375; % Back EMF Constant (V / (rad/s))
@@ -251,20 +272,20 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     Kp                      = 2;  % Proportional current gain (V/A)
     Ki                      = 0.1; % Integral gain of current controler
 
-    // *** Cartesian Gains *** //
-    K_xx                    = 30; % Stiffness
-    K_yy                    = 40; % Stiffness
+    %% *** Cartesian Gains *** %%
+    K_xx                    = 70; % Stiffness
+    K_yy                    = 70; % Stiffness
     K_xy                    = -0.0; % Stiffness
 
-    D_xx                     = 0.5; % Damping
-    D_yy                     = 0.5; % Damping
+    D_xx                     = 6; % Damping
+    D_yy                     = 6; % Damping
     D_xy                     = 0.000; % Damping
-    // *** End ***///
+    %% *** End *** %%
     
     xDesFoot                 = 0;     % Desired foot position x (m)
     yDesFoot                 = -0.13; % Desired foot position y (m)
     A                        = 0.06;  % Magnitude of oscillation (m)
-    omega                    = 1;     % Angular velocity of oscillation (RPS, Revolutions Per Second)
+    omega                    = 12;     % Angular velocity of oscillation (RPS, Revolutions Per Second)
 
     duty_max                 = 1;  % Maximum PWM duty (safety limit)
     
@@ -277,13 +298,13 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     
     
     %% Plot and go
-    global X Y V
+%     global X Y V
     figure(2)
     clf
     hold on
     axis equal
     axis([-.25 .25 -.25 .1]);
-    [X Y] = meshgrid(linspace(-.25,.25,50),linspace(-.25, .1,50));
+    [X, Y] = meshgrid(linspace(-.25,.25,50),linspace(-.25, .1,50));
     eX = X - xDesFoot;
     eY = Y - yDesFoot;
     V = 1/2 * K_xx * eX.*eX + 1/2 * K_yy * eY.*eY + K_xy * eX.*eY ;
