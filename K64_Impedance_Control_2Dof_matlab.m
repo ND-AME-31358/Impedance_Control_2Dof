@@ -1,5 +1,7 @@
 function output_data = K64_Impedance_Control_2Dof_matlab()
-    figure(1);  clf;       
+%K64_Impedance_Control_2Dof_matlab Communicate to FRDM board to start impedance controller
+%   See parameters below
+    figure(1);  clf;       % Create an empty figure to update later for joint space
     a1 = subplot(421);
     h1 = plot([0],[0]);
     h1.XData = []; h1.YData = [];
@@ -51,7 +53,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     ylabel('Duty Ratio 2 (%)');
     
     
-    figure(3);  clf;   
+    figure(3);  clf;       % Create an empty figure for Cartesian plot
     subplot(321)
     g1 = plot([0],[0]);
     g1.XData = [];
@@ -155,37 +157,37 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     % This function will get called any time there is new data from
     % the FRDM board. Data comes in blocks, rather than one at a time.
     function my_callback(new_data)
-        t = new_data(:,1);   % time
-        pos1 = new_data(:,2); % position
-        vel1 = new_data(:,3); % velocity
-        cur1 = new_data(:,4); % current
-        dcur1 = new_data(:,5); % current
-        duty1 = new_data(:,6); % current
+        t     = new_data(:,1);  % time
+        pos1  = new_data(:,2);  % Joint 1: position
+        vel1  = new_data(:,3);  % Joint 1: velocity
+        cur1  = new_data(:,4);  % Joint 1: current
+        dcur1 = new_data(:,5);  % Joint 1: desired current
+        vol1  = new_data(:,6);  % Joint 1: command motor voletage
         
-        pos2 = new_data(:,7); % position
-        vel2 = new_data(:,8); % velocity
-        cur2 = new_data(:,9); % current
-        dcur2 = new_data(:,10); % current
-        duty2 = new_data(:,11); % current
+        pos2  = new_data(:,7);  % Joint 2: position
+        vel2  = new_data(:,8);  % Joint 2: velocity
+        cur2  = new_data(:,9);  % Joint 2: current
+        dcur2 = new_data(:,10); % Joint 2: desired current
+        vol2  = new_data(:,11); % Joint 2: command motor voletage
         
-        x = new_data(:,12); % current
-        y = new_data(:,13); % current
+        x     = new_data(:,12); % Foot position in x direction
+        y     = new_data(:,13); % Foot position in y direction
         
-        dx = new_data(:,14); % current
-        dy = new_data(:,15); % current
+        dx    = new_data(:,14); % Foot velocity in x direction
+        dy    = new_data(:,15); % Foot velocity in y direction
         
-        fx = new_data(:,16); % current
-        fy = new_data(:,17); % current
+        fx    = new_data(:,16); % Virtual force in x direction
+        fy    = new_data(:,17); % Virtual force in y direction
 
-        xd = new_data(:,18); % current
-        yd = new_data(:,19); % current
-        dxd = new_data(:,20); % current
-        dyd = new_data(:,21); % current
+        xd    = new_data(:,18); % Desired foot position in x direction
+        yd    = new_data(:,19); % Desired foot position in y direction
+        dxd   = new_data(:,20); % Desired foot velocity in x direction
+        dyd   = new_data(:,21); % Desired foot velocity in y direction
         
-%         
+        N     = length(pos1);   % number of data points
         
-        N = length(pos1);
         
+        % Update the plots
         h1.XData(end+1:end+N) = t;   
         h1.YData(end+1:end+N) = pos1;
         h2.XData(end+1:end+N) = t;   
@@ -195,7 +197,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
         h4.XData(end+1:end+N) = t;   
         h4.YData(end+1:end+N) = dcur1;
         h5.XData(end+1:end+N) = t;   
-        h5.YData(end+1:end+N) = duty1;
+        h5.YData(end+1:end+N) = vol1;
         
         h12.XData(end+1:end+N) = t;   
         h12.YData(end+1:end+N) = pos2;
@@ -206,7 +208,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
         h42.XData(end+1:end+N) = t;  
         h42.YData(end+1:end+N) = dcur2;
         h52.XData(end+1:end+N) = t;   
-        h52.YData(end+1:end+N) = duty2;
+        h52.YData(end+1:end+N) = vol2;
         
         g1.XData(end+1:end+N) = t;   
         g1.YData(end+1:end+N) = x;
@@ -251,10 +253,17 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     end
     
     %%
+    % frdm_ip  = '192.168.1.100';     % FRDM board ip
+    % frdm_port= 11223;               % FRDM board port  
+    % params.callback = @my_callback; % callback function
+    %           % end of experiment timeout
+    % 
+              
+    % Setup the communication between PC and FRDM board
     frdm_ip  = '192.168.1.100';     % FRDM board ip
     frdm_port= 11223;               % FRDM board port  
     params.callback = @my_callback; % callback function
-              % end of experiment timeout
+    params.timeout  = 2;            % end of experiment timeout
     
     
     %% Parameters for tuning
