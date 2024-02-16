@@ -10,7 +10,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
 
     %% Estimated physical parameters
     Rm                        = 4.0; % Motor Winding resistance (Ohms)
-    kb                        = 0.0; % Back EMF Constant (V / (rad/s))
+    kb                        = 0.1; % Back EMF Constant (V / (rad/s))
     kv                        = 0.0; % Friction coefficienct (Nm / (rad/s))
 
     %% Angles of initial configuration
@@ -18,23 +18,23 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     angle2_init              = 0.0; % Initial angle for q2 (rad)
 
     %% Current control gains (have been tuned, no need to modify)
-    Kp                      = 4;  % Proportional current gain (V/A)
-    Ki                      = 0.1; % Integral gain of current controler
+    Kp                      = 4;    % Proportional current gain (V/A)
+    Ki                      = 0.1;  % Integral gain of current controler
 
     %% Cartesian Gains
     K_xx                    = 10; % Stiffness
     K_yy                    = 10; % Stiffness
-    K_xy                    = .0; % Stiffness
+    K_xy                    = 00; % Stiffness
 
     D_xx                     = 0; % Damping
     D_yy                     = 0; % Damping
     D_xy                     = 0; % Damping
     
     %% Desired position and parameters    
-    xDesFoot                 = 0;     % Desired foot position x (m)
-    yDesFoot                 = -0.13; % Desired foot position y (m)
-    A                        = 0.01;  % Magnitude of oscillation (m)
-    omega                    = 0;    % Angular velocity of oscillation (rad/s)
+    xSetFoot                 = 0;       % Desired foot position x (m)
+    ySetFoot                 = -0.13;   % Desired foot position y (m)
+    A                        = 0.01;    % Magnitude of oscillation (m)
+    omega                    = 0;       % Angular velocity of oscillation (rad/s)
 
     duty_max                 = 0.2;     % Maximum PWM duty (safety limit)
     
@@ -42,7 +42,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     input = [current_control_period_us impedance_control_period_us exp_period ...
              Rm kb kv angle1_init angle2_init ...   % Physical parameters
              Kp Ki K_xx K_yy K_xy D_xx D_yy D_xy ...% Control  parameters 
-             xDesFoot yDesFoot A omega ...          % Desired  target
+             xSetFoot ySetFoot A omega ...          % Desired  target
              duty_max];                             % Safety 
 
     output_size = 21;    % number of outputs expected
@@ -171,8 +171,9 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     w2 = plot([0], [0],'r');
     w2.XData = [];
     w2.YData = [];
+    w3 = plot(xSetFoot, ySetFoot,'*b','MarkerSize',5);
     hold off
-    legend('Foot Position', 'Target Position');
+    legend('Foot Position', 'Desired Position', 'Set Position');
     xlabel('X Foot Position (m)')
     ylabel('Y Foot Position (m)');
     axis equal
@@ -194,9 +195,9 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     clf; hold on; axis equal
     axis([-.25 .25 -.25 .1]);
     [X, Y] = meshgrid(linspace(-.25,.25,50),linspace(-.25, .1,50));
-    eX = X - xDesFoot;
-    eY = Y - yDesFoot;
-    V = 1/2 * K_xx * eX.*eX + 1/2 * K_yy * eY.*eY + K_xy * eX.*eY ;
+    eX = X - xSetFoot;
+    eY = Y - ySetFoot;
+    V = K_yy^2*eY.^2 + K_xy^2*eY.^2 + 2*K_xy*K_yy*eX.*eY + 2*K_xx*K_xy*eX.*eY + K_xy^2*eX.^2 + K_xx^2*eX.^2;
     contour(X,Y,V,15,'LineWidth',1.5);
    
     h_OB = plot([0],[0],'LineWidth',3);
@@ -220,6 +221,8 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     xlabel('X Position (m)');
     ylabel('Y Position (m)');
     colormap();
+    c = colorbar;
+    c.Label.String = 'Force Magnitude (N)';
     
     % This function will get called any time there is new data from
     % the FRDM board. Data comes in blocks, rather than one at a time.
