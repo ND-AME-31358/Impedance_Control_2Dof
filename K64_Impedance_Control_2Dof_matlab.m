@@ -1,6 +1,54 @@
 function output_data = K64_Impedance_Control_2Dof_matlab()
 %K64_Impedance_Control_2Dof_matlab Communicate to FRDM board to start impedance controller
 %   See parameters below
+
+%%  Set parameters to FRDM board
+    %% Time parameters
+    current_control_period_us   = 200;  % Current control period in micro seconds  (200us -> 5kHz)
+    impedance_control_period_us = 2000; % Impedance control period in microseconds (2000us -> 500Hz)
+    exp_period                  = 10;   % Experiment time in seconds 
+
+    %% Estimated physical parameters
+    Rm                        = 4.0; % Motor Winding resistance (Ohms)
+    kb                        = 0.0; % Back EMF Constant (V / (rad/s))
+    kv                        = 0.0; % Friction coefficienct (Nm / (rad/s))
+
+    %% Angles of initial configuration
+    angle1_init              = 0.0; % Initial angle for q1 (rad)
+    angle2_init              = 0.0; % Initial angle for q2 (rad)
+
+    %% Current control gains (have been tuned, no need to modify)
+    Kp                      = 4;  % Proportional current gain (V/A)
+    Ki                      = 0.1; % Integral gain of current controler
+
+    %% Cartesian Gains
+    K_xx                    = 10; % Stiffness
+    K_yy                    = 10; % Stiffness
+    K_xy                    = .0; % Stiffness
+
+    D_xx                     = 0; % Damping
+    D_yy                     = 0; % Damping
+    D_xy                     = 0; % Damping
+    
+    %% Desired position and parameters    
+    xDesFoot                 = 0;     % Desired foot position x (m)
+    yDesFoot                 = -0.13; % Desired foot position y (m)
+    A                        = 0.06;  % Magnitude of oscillation (m)
+    omega                    = 12;    % Angular velocity of oscillation (rad/s)
+
+    duty_max                 = 0.2;     % Maximum PWM duty (safety limit)
+    
+    %% Pack inputs
+    input = [current_control_period_us impedance_control_period_us exp_period ...
+             Rm kb kv angle1_init angle2_init ...   % Physical parameters
+             Kp Ki K_xx K_yy K_xy D_xx D_yy D_xy ...% Control  parameters 
+             xDesFoot yDesFoot A omega ...          % Desired  target
+             duty_max];                             % Safety 
+
+    output_size = 21;    % number of outputs expected
+
+
+%% Create plot windows
     figure(1);  clf;       % Create an empty figure to update later for joint space
     a1 = subplot(421);
     h1 = plot([0],[0]);
@@ -110,7 +158,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     g6.YData = [];
     ylabel('Y Foot Force (m)');
     
-    figure(4);  clf;   
+    figure(4);  clf;   % Create a 2D plot of foot position
     w1 = plot([0], [0]);
     w1.XData = [];
     w1.YData = [];
@@ -123,36 +171,50 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     xlabel('X Foot Position (m)')
     ylabel('Y Foot Position (m)');
     axis equal
-%     xlim();
     title('Foot Position in Plane');
     
     
-    h_OB = 0;
-    h_AC = 0;
-    h_BD = 0;
-    h_CE = 0;
     
-    %% Definte fixed paramters
-    m1 =.03;
-    m2 =.01; 
-    m3 = .01;
-    m4 = .02;
-    I1 = .0005;
-    I2 = .0005;
-    I3 = .0005;
-    I4 = .0005;
+    %% Visualization of leg
+    %  Set parameters for leg
+    
+    % Linkage length
     l_OA=.011; 
     l_OB=.042; 
     l_AC=.096; 
     l_DE=.090;
-    
-    l_O_m1=1/2 * l_OB; 
-    l_B_m2=1/2 * l_AC; 
-    l_A_m3=1/2 * l_AC; 
-    l_C_m4=1/2 * (l_DE+ l_OB-l_OA);
-    g = 10*0;
+    p   = [l_OA l_OB l_AC l_DE]';
 
-    p   = [m1 m2 m3 m4 I1 I2 I3 I4 l_O_m1 l_B_m2 l_A_m3 l_C_m4 l_OA l_OB l_AC l_DE g]';
+    figure(2)
+    clf; hold on; axis equal
+    axis([-.25 .25 -.25 .1]);
+    [X, Y] = meshgrid(linspace(-.25,.25,50),linspace(-.25, .1,50));
+    eX = X - xDesFoot;
+    eY = Y - yDesFoot;
+    V = 1/2 * K_xx * eX.*eX + 1/2 * K_yy * eY.*eY + K_xy * eX.*eY ;
+    contour(X,Y,V,15,'LineWidth',1.5);
+   
+    h_OB = plot([0],[0],'LineWidth',3);
+    h_AC = plot([0],[0],'LineWidth',3);
+    h_BD = plot([0],[0],'LineWidth',3);
+    h_CE = plot([0],[0],'LineWidth',3);
+    
+    z = [0 0 0 0 ]';
+    keypoints = keypoints_leg(z,p);
+
+    rA = keypoints(:,1); 
+    rB = keypoints(:,2);
+    rC = keypoints(:,3);
+    rD = keypoints(:,4);
+    rE = keypoints(:,5);
+
+    set(h_OB,'XData',[0 rB(1)],'YData',[0 rB(2)]);
+    set(h_AC,'XData',[rA(1) rC(1)],'YData',[rA(2) rC(2)]);
+    set(h_BD,'XData',[rB(1) rD(1)],'YData',[rB(2) rD(2)]);
+    set(h_CE,'XData',[rC(1) rE(1)],'YData',[rC(2) rE(2)]);
+    xlabel('X Position (m)');
+    ylabel('Y Position (m)');
+    colormap();
     
     % This function will get called any time there is new data from
     % the FRDM board. Data comes in blocks, rather than one at a time.
@@ -251,13 +313,6 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
         set(h_BD,'XData',[rB(1) rD(1)],'YData',[rB(2) rD(2)]);
         set(h_CE,'XData',[rC(1) rE(1)],'YData',[rC(2) rE(2)]);
     end
-    
-    %%
-    % frdm_ip  = '192.168.1.100';     % FRDM board ip
-    % frdm_port= 11223;               % FRDM board port  
-    % params.callback = @my_callback; % callback function
-    %           % end of experiment timeout
-    % 
               
     % Setup the communication between PC and FRDM board
     frdm_ip  = '192.168.1.100';     % FRDM board ip
@@ -266,83 +321,6 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     params.timeout  = 2;            % end of experiment timeout
     
     
-    %% Parameters for tuning
-    current_control_period_us   = 200;  % Current control period in micro seconds
-    impedance_control_period_us = 2000; % Impedance control period in microseconds seconds
-    exp_period                  = 10;   % Experiment time in seconds 
-
-    Rm                        = 1.9; % Terminal resistance (Ohms)
-    Kb                        = .1375; % Back EMF Constant (V / (rad/s))
-    Kv                        = 5e-4;% Friction coefficienct (Nm / (rad/s))
-
-    angle1_init              = -1.3910; % Initial angle for q1 (rad)
-    angle2_init              = 0.4414; % Initial angle for q2 (rad)
-
-    Kp                      = 2;  % Proportional current gain (V/A)
-    Ki                      = 0.1; % Integral gain of current controler
-
-    %% *** Cartesian Gains *** %%
-    K_xx                    = 70; % Stiffness
-    K_yy                    = 70; % Stiffness
-    K_xy                    = -0.0; % Stiffness
-
-    D_xx                     = 6; % Damping
-    D_yy                     = 6; % Damping
-    D_xy                     = 0.000; % Damping
-    %% *** End *** %%
-    
-    xDesFoot                 = 0;     % Desired foot position x (m)
-    yDesFoot                 = -0.13; % Desired foot position y (m)
-    A                        = 0.06;  % Magnitude of oscillation (m)
-    omega                    = 12;     % Angular velocity of oscillation (RPS, Revolutions Per Second)
-
-    duty_max                 = 1;  % Maximum PWM duty (safety limit)
-    
-    %% Sepectify inputs
-    input = [current_control_period_us impedance_control_period_us exp_period];
-    input = [input Rm Kb Kv angle1_init angle2_init];
-    input = [input Kp Ki K_xx K_yy K_xy D_xx D_yy D_xy xDesFoot yDesFoot A omega];
-    input = [input duty_max];
-    params.timeout  = exp_period;  
-    
-    
-    %% Plot and go
-%     global X Y V
-    figure(2)
-    clf
-    hold on
-    axis equal
-    axis([-.25 .25 -.25 .1]);
-    [X, Y] = meshgrid(linspace(-.25,.25,50),linspace(-.25, .1,50));
-    eX = X - xDesFoot;
-    eY = Y - yDesFoot;
-    V = 1/2 * K_xx * eX.*eX + 1/2 * K_yy * eY.*eY + K_xy * eX.*eY ;
-    contour(X,Y,V,15,'LineWidth',1.5);
-   
-    h_OB = plot([0],[0],'LineWidth',3);
-    h_AC = plot([0],[0],'LineWidth',3);
-    h_BD = plot([0],[0],'LineWidth',3);
-    h_CE = plot([0],[0],'LineWidth',3);
-    
-    z = [pi/4 -pi/1.7 0 0 ]';
-    keypoints = keypoints_leg(z,p);
-
-    rA = keypoints(:,1); 
-    rB = keypoints(:,2);
-    rC = keypoints(:,3);
-    rD = keypoints(:,4);
-    rE = keypoints(:,5);
-
-    set(h_OB,'XData',[0 rB(1)],'YData',[0 rB(2)]);
-    set(h_AC,'XData',[rA(1) rC(1)],'YData',[rA(2) rC(2)]);
-    set(h_BD,'XData',[rB(1) rD(1)],'YData',[rB(2) rD(2)]);
-    set(h_CE,'XData',[rC(1) rE(1)],'YData',[rC(2) rE(2)]);
-    xlabel('X Position (m)');
-    ylabel('Y Position (m)');
-    colormap()
-        
-    
-    output_size = 21;    % number of outputs expected
     output_data = RunExperiment(frdm_ip,frdm_port,input,output_size,params);
     %linkaxes([a1 a2 a3 a4],'x')
 end
