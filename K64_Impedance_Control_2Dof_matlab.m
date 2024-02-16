@@ -33,8 +33,8 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     %% Desired position and parameters    
     xDesFoot                 = 0;     % Desired foot position x (m)
     yDesFoot                 = -0.13; % Desired foot position y (m)
-    A                        = 0.06;  % Magnitude of oscillation (m)
-    omega                    = 12;    % Angular velocity of oscillation (rad/s)
+    A                        = 0.01;  % Magnitude of oscillation (m)
+    omega                    = 0;    % Angular velocity of oscillation (rad/s)
 
     duty_max                 = 0.2;     % Maximum PWM duty (safety limit)
     
@@ -68,6 +68,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     subplot(425);
     h4 = plot([0],[0],'r');
     h4.XData = []; h4.YData = [];
+    legend("Sensed","Desired");
     hold off;
     
     a4 = subplot(427);
@@ -94,14 +95,16 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     subplot(426);
     h42 = plot([0],[0],'r');
     h42.XData = []; h42.YData = [];
+    legend("Sensed","Desired");
     hold off;
+
     a8 = subplot(428);
     h52 = plot([0],[0]);
     h52.XData = []; h52.YData = [];
     ylabel('Duty Ratio 2 (%)');
     
     
-    figure(3);  clf;       % Create an empty figure for Cartesian plot
+    figure(2);  clf;       % Create an empty figure for Cartesian plot
     subplot(321)
     g1 = plot([0],[0]);
     g1.XData = [];
@@ -111,6 +114,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     g12 = plot([0],[0],'r');
     g12.XData = [];
     g12.YData = [];
+    legend("Sensed","Desired");
     hold off;
     
     subplot(322)
@@ -133,6 +137,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     g32 = plot([0],[0],'r');
     g32.XData = [];
     g32.YData = [];
+    legend("Sensed","Desired");
     hold off;
     
     subplot(324)
@@ -158,7 +163,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     g6.YData = [];
     ylabel('Y Foot Force (m)');
     
-    figure(4);  clf;   % Create a 2D plot of foot position
+    figure(3);  clf;   % Create a 2D plot of foot position
     w1 = plot([0], [0]);
     w1.XData = [];
     w1.YData = [];
@@ -185,7 +190,7 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     l_DE=.090;
     p   = [l_OA l_OB l_AC l_DE]';
 
-    figure(2)
+    figure(4)
     clf; hold on; axis equal
     axis([-.25 .25 -.25 .1]);
     [X, Y] = meshgrid(linspace(-.25,.25,50),linspace(-.25, .1,50));

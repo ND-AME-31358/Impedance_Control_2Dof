@@ -218,47 +218,55 @@ int main (void) {
                 const float dth1= velocity1;
                 const float dth2= velocity2;
 
-                
-                // Forward kinematics
-                // Foot tip position ******TO BE COMPLETED******
-                float xLeg = 0.0; //   l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
-                float yLeg = 0.0; // - l_AC*cos(th1 + th2) - l_DE*cos(th1) - l_OB*cos(th1);
+                // ******TO BE COMPLETED******
+                // Forward kinematics Foot tip position 
+                // Note: the variable l_OA, l_OB, l_AC, and l_DE represent 
+                // the length of OA, OB, AC, and DE respectively.
+                float x =   l_AC*sin(0.0);
+                float y = - l_AC*cos(0.0);
 
-                // Compute the Jacobian ******TO BE COMPLETED******
-                float Jx_th1 = 0.0; // l_AC*cos(th1 + th2) + l_DE*cos(th1) + l_OB*cos(th1);
-                float Jx_th2 = 0.0; // l_AC*cos(th1 + th2);
-                float Jy_th1 = 0.0; // l_AC*sin(th1 + th2) + l_DE*sin(th1) + l_OB*sin(th1);
-                float Jy_th2 = 0.0; // l_AC*sin(th1 + th2);
+                // ******TO BE COMPLETED******
+                // Fix the computation of Jacobian 
+                // Tips: use th1 and th2 as angle of joint 1 and 2
+                float Jx_th1 = l_AC*cos(0.0) + l_DE*cos(0.0) + l_OB*cos(0.0);
+                float Jx_th2 = l_AC*cos(0.0);
+                float Jy_th1 = l_AC*sin(0.0) + l_DE*sin(0.0) + l_OB*sin(0.0);
+                float Jy_th2 = l_AC*sin(0.0);
 
-                // Compute the foot tip velocity ******TO BE COMPLETED******
-                float dxLeg = 0.0; // Jx_th1 * dth1 + Jx_th2 * dth2;
-                float dyLeg = 0.0; // Jy_th1 * dth1 + Jy_th2 * dth2;
+                // ******TO BE COMPLETED******
+                // Fix the computation of foot tip velocity 
+                float dx = Jx_th1 * dth1 + Jx_th1 * dth2;
+                float dy = Jx_th1 * dth1 + Jx_th1 * dth2;
 
+                // ******TO BE COMPLETED IN PART 4******
                 // Assign desired foot position
-                float xd = xSetFoot;
-                float yd = ySetFoot;
-                // Compute the position error
-                float e_x = ( xd - xLeg );
-                float e_y = ( yd - yLeg );
-                
+                float xd = xSetFoot;    // Keep this until Part 4.1
+                float yd = ySetFoot;    // Keep this until Part 4.2
                 // Assign desired foot velocity
-                float dxd = 0.0;    // Keep this until Part 4
-                float dyd = 0.0;    // Keep this until Part 4
+                float dxd = 0.0;    // Keep this until Part 4.3
+                float dyd = 0.0;    // Keep this until Part 4.3
+                
+                // Compute the position error
+                float e_x = ( xd - x );
+                float e_y = ( yd - y );
                 // Compute the velocity error
-                float de_x = ( dxd - dxLeg );
-                float de_y = ( dyd - dyLeg );
+                float de_x = ( dxd - dx );
+                float de_y = ( dyd - dy );
 
-                // Compute the applied virtual force at foot tip ******TO BE COMPLETED******
-                float fx   = 0.0; // K_xx * e_x + K_xy * e_y + D_xx * de_x + D_xy * de_y;
-                float fy   = 0.0; // K_yy * e_y + K_xy * e_x + D_yy * de_y + D_xy * de_x;
+                // ******TO BE COMPLETED******
+                // Fix the computation of applied virtual force at foot tip 
+                float fx   = K_xx * e_x + K_xx * e_y + D_xx * de_x + K_xx * de_y;
+                float fy   = K_xx * e_y + K_xx * e_x + K_xx * de_y + K_xx * de_x;
 
-                // Use jacobian to transform virtual force to torques ******TO BE COMPLETED******
-                float tau_des1 = 0.0; // kv*velocity1 + Jx_th1*fx + Jy_th1*fy;
-                float tau_des2 = 0.0; // kv*velocity2 + Jx_th2*fx + Jy_th2*fy;
+                // ******TO BE COMPLETED******
+                // Fix computation of torque command:
+                // Use jacobian to transform virtual force to torques 
+                float tau_des1 = kv*velocity1 + Jx_th1*fx + Jx_th2*fy;
+                float tau_des2 = kv*velocity2 + Jy_th1*fx + Jx_th1*fy;
                 
                 // Set desired currents
-                current_des1 = softStart * tau_des1/kb;
-                current_des2 = softStart * tau_des2/kb;
+                current_des1 = softStart * tau_des1 / kb;
+                current_des2 = softStart * tau_des2 / kb;
                 /* ===== End of code block =================== */
                 
                 // Fill the output data to send back to MATLAB
@@ -276,10 +284,10 @@ int main (void) {
                 output_data[9] = current_des2;
                 output_data[10]= motor_voltage2;
 
-                output_data[11] = xLeg;
-                output_data[12] = yLeg;
-                output_data[13] = dxLeg;
-                output_data[14] = dyLeg;
+                output_data[11] = x;
+                output_data[12] = y;
+                output_data[13] = dx;
+                output_data[14] = dy;
                 output_data[15] = fx;
                 output_data[16] = fy;
 
@@ -314,11 +322,16 @@ void currentLoopFunc(){
     current1 = 36.666667f * (CS1 - 0.5f);
     current2 = 36.666667f * (CS2 - 0.5f);
     
-    // Read angle and velocity from encoder
-    angle1    = (float)encoder1.getPulses()   * radPerTick + angle_init1;   // in rad
-    velocity1 =        encoder1.getVelocity() * radPerTick;                 // in rad/s
-    angle2    = (float)encoder2.getPulses()   * radPerTick + angle_init2;   // in rad
-    velocity2 =        encoder2.getVelocity() * radPerTick;                 // in rad/s
+    /* ===== Complete the code in this block =====
+     * Fix the angle reading from encoders
+     * so that it gives the calibrated angles
+     * Tip: use variable angle_init1 and angle_init2
+    */
+    angle1    = (float)encoder1.getPulses()   * radPerTick; // in rad
+    velocity1 =        encoder1.getVelocity() * radPerTick; // in rad/s
+    angle2    = (float)encoder2.getPulses()   * radPerTick; // in rad
+    velocity2 =        encoder2.getVelocity() * radPerTick; // in rad/s
+    /* ===== End of code block =================== */
 
     // Integrate the current errors
     current_error_int1 += current_des1 - current1;
