@@ -140,6 +140,7 @@ int main (void) {
     
     // Continually get input from MATLAB and run experiments
     float input_params[NUM_INPUTS];
+    bool first_run = true;
     
     // infinite while loop, analogous to Arduino's loop function
     while(1) {
@@ -153,9 +154,9 @@ int main (void) {
             Rm                          = input_params[3]; // Motor winding resistance (Ohms)
             kb                          = input_params[4]; // Back EMF Constant (V / (rad/s))
             kv                          = input_params[5]; // Friction coefficienct (Nm / (rad/s))
-
-            angle_init1                 = input_params[6]; // Initial angle for joint 1 (rad)
-            angle_init2                 = input_params[7]; // Initial angle for joint 2 (rad)
+            
+            float angle_init1_cmd       = input_params[6]; // Initial angle for joint 1 (rad)
+            float angle_init2_cmd       = input_params[7]; // Initial angle for joint 2 (rad)
 
             Kp                          = input_params[8]; // Kp Proportional current gain (V/A)
             Ki                          = input_params[9]; // Ki integration gain (V/As)
@@ -176,17 +177,22 @@ int main (void) {
 
 
             // Setup experiment
-            angle1 = 0.0f;
-            angle2 = 0.0f;
-            encoder1.reset();
-            encoder2.reset();
+            if (first_run){
+                encoder1.reset();
+                encoder2.reset();
+                angle_init1 = angle_init1_cmd;
+                angle_init2 = angle_init2_cmd;
+            }
             current_error_int1 = 0.0f; // Reset integration of current error
             current_error_int2 = 0.0f; // Reset integration of current error
+            current_des1       = 0.0f; // Reset desired current
+            current_des2       = 0.0f; // Reset desired current
             setMotorVoltage(0,M1INA,M1INB,M1PWM); //Turn off motor just in case
             setMotorVoltage(0,M2INA,M2INB,M2PWM); //Turn off motor just in case
             // Set high-frequency (low-level) current control loop
             // 0.0002 gives the loop period, which means current loop is under 5kHz
             currentLoopTicker.attach_us(&currentLoopFunc,current_control_period_us);
+            currentLoopFunc(); // Run current controller once before report data
 
             float softStart = 0.0; // Soft start scalar that prevent the sudden motion at the begining
 
@@ -196,7 +202,7 @@ int main (void) {
             // Run experiment
             while( t.read() < ExpTime ) { 
                 // Soft start: fully actuation after 2 seconds
-                softStart = min(0.5*t.read(),1.0);
+                softStart = first_run ? min(0.5*t.read(),1.0) : 1.0;
                 
                 
                 /* ===== Complete the code in this block =====
@@ -293,6 +299,7 @@ int main (void) {
             server.setExperimentComplete();
             setMotorVoltage(0,M1INA,M1INB,M1PWM);
             setMotorVoltage(0,M2INA,M2INB,M2PWM);
+            first_run = false;
         } // end if of "check whether we have parameter"
     } // end while of "infinite while loop"
 } // end main
