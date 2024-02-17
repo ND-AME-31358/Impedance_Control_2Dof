@@ -198,7 +198,8 @@ function output_data = K64_Impedance_Control_2Dof_matlab()
     eX = X - xSetFoot;
     eY = Y - ySetFoot;
     V = K_yy^2*eY.^2 + K_xy^2*eY.^2 + 2*K_xy*K_yy*eX.*eY + 2*K_xx*K_xy*eX.*eY + K_xy^2*eX.^2 + K_xx^2*eX.^2;
-    contour(X,Y,V,15,'LineWidth',1.5);
+    F = sqrt(V);
+    contour(X,Y,F,10,'LineWidth',1.5);
    
     h_OB = plot([0],[0],'LineWidth',3);
     h_AC = plot([0],[0],'LineWidth',3);
